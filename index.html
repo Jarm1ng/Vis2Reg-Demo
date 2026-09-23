@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f5f6f3"><title>Vis2Reg — Liver AR Studio</title><meta name="description" content="Explore recorded laparoscopic imagery and 3D liver anatomy in an interactive Vis2Reg research demonstration. Compare AR overlays, save views and inspect hidden structures."><meta property="og:title" content="Vis2Reg — Interactive Liver AR"><meta property="og:description" content="Explore 3D liver anatomy alongside a recorded laparoscopic sequence."><meta property="og:type" content="website"><meta property="og:url" content="https://jarm1ng.github.io/Vis2Reg-Demo/"><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=20260923-public"><link rel="stylesheet" href="studio.css?v=20260923-public"><link rel="stylesheet" href="saved-views.css?v=20260923-public"><link rel="stylesheet" href="case-library.css?v=20260923-public"></head>
+<body><svg class="svg-defs" aria-hidden="true"><symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol><symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol><symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol><symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2 7M3 4v7h7"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-cube" viewBox="0 0 24 24"><path d="m12 3 9 5v9l-9 5-9-5V8l9-5Zm0 10v9M3 8l9 5 9-5M12 3v10"/></symbol><symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3c-1 .5-1 1-1 2m0 3h.01"/></symbol><symbol id="i-chevron" viewBox="0 0 24 24"><path d="m8 4 8 8-8 8"/></symbol><symbol id="i-prev" viewBox="0 0 24 24"><path d="M6 5v14m12-14-9 7 9 7V5Z"/></symbol><symbol id="i-next" viewBox="0 0 24 24"><path d="M18 5v14M6 5l9 7-9 7V5Z"/></symbol><symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol><symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol><symbol id="i-edit" viewBox="0 0 24 24"><path d="m16 3 5 5-12 12H4v-5L16 3Zm-3 3 5 5"/></symbol><symbol id="i-compare" viewBox="0 0 24 24"><path d="M12 3v18M8 5H4v14h4m8-14h4v14h-4M8 9l-3 3 3 3m8-6 3 3-3 3"/></symbol><symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4h12v17l-6-4-6 4V4Z"/></symbol><symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h4l2-3h4l2 3h4v13H4V7Z"/><circle cx="12" cy="13" r="4"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14A8 8 0 0 1 10 4a8.5 8.5 0 1 0 10 10Z"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol><symbol id="i-grid" viewBox="0 0 24 24"><path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol></svg>
+<div id="loading" role="status"><div class="loading-card"><div class="spin"></div><strong>Preparing your workspace</strong><div class="l">Loading anatomy and image sequence…</div></div></div>
+<div id="app">
+<header id="top">
+ <a class="brand" href="index.html" aria-label="Vis2Reg home"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg></span><span>Vis<span class="brand-number">2</span>Reg<small>LIVER AR STUDIO</small></span></a>
+ <nav class="top-nav" aria-label="Main navigation"><span class="nav-current">Workspace</span><button id="saved-views-open"><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>Saved views<span id="saved-view-count" class="nav-count" hidden>0</span></button><button id="about-open">About</button></nav>
+ <div class="top-right"><span class="conference">AE-CAI × PRiSM <b>2026</b></span><button class="icon-btn" id="theme-toggle" aria-label="Switch to dark theme" title="Switch to dark theme"><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg></button><button class="icon-btn" id="help-open" title="Keyboard shortcuts" aria-label="Keyboard shortcuts"><svg class="icon" aria-hidden="true"><use href="#i-help"/></svg></button><button class="btn primary" id="present" aria-label="Enter presentation"><svg class="icon" aria-hidden="true"><use href="#i-expand"/></svg><span>Present</span></button></div>
+</header>
+<section class="workspace-heading"><div class="workspace-intro"><div class="eyebrow"><span class="status-dot"></span> INTERACTIVE ANATOMY WORKSPACE</div><h1>See beneath the surface<span>.</span></h1><p class="workspace-subtitle">Explore the image. Reveal the anatomy. Find your perspective.</p></div><div class="workspace-actions"><button class="btn" id="save-view"><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Save view</span></button><button class="btn export-action" id="capture-open"><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg><span>Export PNG</span></button><button class="guide-launch" id="guide-open">Explore the demo <span>4 steps</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div></section>
+<main id="main">
+ <section class="viewer" aria-label="Imaging workspace">
+  <div class="viewer-toolbar"><div class="view-tabs" role="group" aria-label="View mode"><button id="mode-reg" class="active"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg>AR overlay</button><button id="mode-raw"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>Original</button><button id="mode-compare"><svg class="icon" aria-hidden="true"><use href="#i-compare"/></svg>Compare</button><button id="mode-explore"><svg class="icon" aria-hidden="true"><use href="#i-cube"/></svg>3D anatomy</button></div><button class="icon-btn dark" id="stage-fullscreen" aria-label="Expand imaging workspace" title="Expand imaging workspace"><svg class="icon" aria-hidden="true"><use href="#i-expand"/></svg></button></div>
+  <div class="anatomy-strip"><span class="strip-label">FOCUS</span><div id="structure-focus" role="group" aria-label="Focus an anatomical structure"></div><span class="stage-live"><span class="status-dot"></span><span id="stage-state">Ready</span></span></div><div id="stage-wrap"><div id="stage"><img id="bg" alt="Laparoscopic frame"><canvas id="gl" aria-label="Interactive 3D liver model"></canvas><div class="vignette"></div><div id="comparison-ui" hidden><div class="comparison-labels"><span>Original</span><span>AR overlay</span></div><div id="compare-divider"><span><svg class="icon" aria-hidden="true"><use href="#i-compare"/></svg></span></div><input id="compare-slider" type="range" min="0" max="100" value="50" aria-label="Original and AR comparison divider"></div><div id="mode-badge">Manual registration</div><div class="image-tag">RECORDED LAPAROSCOPY</div><div id="hint">Select 3D anatomy to rotate · click a structure to identify it</div><div class="orientation" aria-hidden="true"><span>Y</span><i></i><b>X</b></div><div id="frame-error" role="status" hidden>Image unavailable. Select another frame.</div></div></div>
+  <div id="comparison-caption" hidden><span><svg class="icon" aria-hidden="true"><use href="#i-compare"/></svg>Drag across the image to compare</span><button id="compare-center">Center divider <span id="compare-value">50%</span></button></div><div class="viewer-caption"><span><span class="status-dot"></span><b id="case-title">Patient 04</b><span class="caption-divider">/</span><span id="case-kind">In-vivo sequence</span></span><span id="source-status">Manual registration</span></div>
+  <div id="transport"><div class="transport-buttons"><button class="icon-btn dark" id="step-back" aria-label="Previous frame" title="Previous frame (←)"><svg class="icon" aria-hidden="true"><use href="#i-prev"/></svg></button><button id="play" aria-label="Play sequence" title="Play / pause (Space)"><svg id="play-i" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><button class="icon-btn dark" id="step-next" aria-label="Next frame" title="Next frame (→)"><svg class="icon" aria-hidden="true"><use href="#i-next"/></svg></button></div><div class="timeline"><div class="timeline-meta"><span id="ftime">0.0s</span><div id="tcode"><span id="frame-unit">FRAME</span> <b id="fi">0</b> <span>/</span> <span id="fn">510</span><span id="edited">Edited</span></div><span id="duration">56.9s</span></div><input type="range" id="scrub" min="0" max="510" value="0" step="1" aria-label="Sequence timeline"></div><div class="speed" aria-label="Playback speed"><button data-s="0.5" aria-label="Half speed">0.5×</button><button data-s="1" class="active" aria-label="Normal speed">1×</button><button data-s="2" aria-label="Double speed">2×</button></div></div>
+  <div class="filmstrip-heading"><span>SEQUENCE KEYFRAMES</span><span id="sequence-note">Select a moment to explore</span></div><div class="filmstrip" id="filmstrip" aria-label="Sequence keyframes"></div>
+ </section>
+ <aside id="panel" aria-label="Anatomy controls"><div class="panel-header"><span class="eyebrow">WORKSPACE CONTROLS</span><span class="panel-dot"></span></div>
+ <section class="section case-section"><div class="section-title"><h2>Case library</h2><button id="browse-cases" class="browse-cases" aria-label="Browse all cases"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg>Browse case</button></div><label class="sr-only" for="case-sel">Select patient case</label><div class="select-wrap"><select id="case-sel"></select><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></div><div class="case-meta"><span id="case-source">In-vivo video</span><span id="pill-frames">511 frames</span></div></section>
+ <section class="section reveal-section"><div class="section-title"><h2>Reveal hidden anatomy</h2><svg class="icon" aria-hidden="true"><use href="#i-spark"/></svg></div><p>Fade the liver to explore what lies beneath.</p><div class="slider"><label for="opacity">Liver transparency <output id="opv">65%</output></label><input type="range" id="opacity" min="0" max="100" value="65"><div class="range-ends"><span>Solid surface</span><span>See through</span></div></div><div class="reveal-presets" aria-label="Transparency presets"><button data-opacity="15">Surface</button><button data-opacity="65" class="active">Balanced</button><button data-opacity="90">Deep reveal</button></div></section>
+ <section class="section"><div class="section-title"><h2>Anatomical layers</h2><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg></div><div id="layer-list"></div></section>
+ <section class="section view-section"><div class="section-title"><h2>Spatial exploration</h2><span class="mini-label">3D</span></div><div class="btns three"><button class="btn" id="v-front">Front</button><button class="btn" id="v-top">Top</button><button class="btn" id="v-side">Side</button></div><div class="display-options"><label class="layer"><span class="name">Depth cueing</span><input type="checkbox" id="opt-fog" checked></label><label class="layer"><span class="name">Auto-rotate</span><input type="checkbox" id="opt-spin"></label></div><button class="text-btn" id="v-reset"><svg class="icon" aria-hidden="true"><use href="#i-reset"/></svg>Return to camera view <kbd>R</kbd></button></section>
+ <section class="section" id="edit-section"><button id="edit-toggle" aria-expanded="false"><svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg><span>Manual adjustment<small>Pose, structures & deformation</small></span><span id="edit-chevron">+</span></button>        <div id="edit-body" style="display:none">
+        <div class="btns" style="grid-template-columns:1fr 1fr;margin-bottom:8px">
+          <button class="btn active" id="em-off">Off</button>
+          <button class="btn" id="em-reg">Liver pose</button>
+          <button class="btn" id="em-struct">Structures</button>
+          <button class="btn" id="em-deform">Deform</button>
+        </div>
+        <div id="edit-tools" style="display:none">
+          <div id="gizmo-tools">
+            <div class="btns three" style="margin-bottom:8px">
+              <button class="btn active" id="gz-translate">Move</button>
+              <button class="btn" id="gz-rotate">Rotate</button>
+              <button class="btn" id="gz-scale">Scale</button>
+            </div>
+            <div class="slider" id="uscale-block" style="margin-bottom:10px">
+              <label for="uscale">Uniform scale <span style="color:var(--muted);font-weight:400">all axes</span><span class="val" id="uscv">100%</span></label>
+              <input type="range" id="uscale" min="0" max="100" value="50">
+            </div>
+          </div>
+          <div id="struct-pick" style="display:none;margin-bottom:8px">
+            <div class="btns three" id="struct-pick-btns"></div>
+          </div>
+          <div id="deform-tools" style="display:none;margin-bottom:8px">
+            <div class="slider" style="margin-bottom:8px">
+              <label for="brush">Brush size <span class="val" id="brv">30%</span></label>
+              <input type="range" id="brush" min="5" max="80" value="30">
+            </div>
+            <div class="btns">
+              <button class="btn" id="d-undo">↶ Undo stroke</button>
+              <button class="btn" id="d-reset">Reset deform</button>
+            </div>
+          </div>
+          <div class="btns" style="margin-bottom:6px">
+            <button class="btn" id="e-copy-next">Copy&nbsp;→&nbsp;next</button>
+            <button class="btn" id="e-copy-all">Copy&nbsp;→&nbsp;all</button>
+          </div>
+          <div class="btns" style="margin-bottom:6px">
+            <button class="btn" id="e-reset-frame">Reset frame</button>
+            <button class="btn" id="e-reset-struct">Reset struct</button>
+          </div>
+          <div class="btns" style="margin-bottom:8px">
+            <button class="btn" id="e-export">Export edits</button>
+            <label class="btn" style="text-align:center;cursor:pointer">Import edits<input type="file" id="e-import" accept="application/json" style="display:none"></label>
+          </div>
+          <div style="font-size:10.5px;color:var(--muted)" id="edit-count">no frame edits</div>
+          <div style="font-size:10.5px;color:var(--muted);margin-top:5px;line-height:1.5">
+            Drag the gizmo on the image. <b style="color:var(--ink)">Liver pose</b> saves per-frame;
+            <b style="color:var(--ink)">Structures</b> apply to every frame. Keys: g move · t rotate · s scale.</div>
+        </div>
+        <div class="btns" style="margin-top:10px;border-top:1px solid var(--panel-b);padding-top:10px">
+          <button class="btn" id="e-reset-case">Reset this case</button>
+          <button class="btn danger" id="e-reset-all">Reset all cases</button>
+        </div>
+        </div><!-- /edit-body --></section>
+ <div class="scope-note"><span class="status-dot"></span><span id="scope-note">Manual poses · illustrative internal anatomy.<br>For research demonstration.</span></div>
+ </aside>
+</main>
+<footer class="app-footer"><span>Vis2Reg <span class="footer-divider">/</span> Interactive 3D–2D liver registration</span><span><span class="status-dot"></span> Local session <span class="footer-divider">·</span> <kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> step</span></footer>
+</div>
+<dialog id="capture-dialog" aria-labelledby="capture-title"><div class="capture-heading"><div><div class="eyebrow">EXPORT YOUR PERSPECTIVE</div><h2 id="capture-title">A view worth sharing.</h2><p id="capture-meta"></p></div><button id="capture-close" class="icon-btn" aria-label="Close image export"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div><div class="capture-preview"><img id="capture-preview" alt="Preview of the exported anatomy view"></div><div class="capture-footer"><p>The image includes the case, frame and demonstration context.</p><a class="btn primary" id="capture-download"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Download PNG</a></div></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<dialog id="info-dialog"><button class="dialog-close icon-btn" aria-label="Close dialog"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button><div id="dialog-content"></div></dialog>
+<div id="guide" hidden><div class="guide-top"><span class="eyebrow">A CLOSER LOOK</span><button id="guide-close" class="icon-btn" aria-label="Close guide"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div><div class="guide-progress"><i></i><i></i><i></i><i></i></div><span id="guide-step"></span><h2 id="guide-title"></h2><p id="guide-text"></p><button class="btn primary" id="guide-next">Next step <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+<script src="lib/three.min.js"></script><script src="lib/OrbitControls.js"></script><script src="lib/TransformControls.js"></script><script src="experience.js?v=20260923-public"></script><script src="app.js?v=20260923-public"></script><script src="studio.js?v=20260923-public"></script><script src="saved-views.js?v=20260923-public"></script><script src="case-library.js?v=20260923-public"></script>
+</body></html>

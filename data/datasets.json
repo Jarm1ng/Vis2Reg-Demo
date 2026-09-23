@@ -1,0 +1,11 @@
+{
+  "cases": [
+    {
+      "key": "p4video",
+      "label": "Patient 4 \u00b7 in-vivo video (manual reg)",
+      "dir": ".",
+      "type": "video",
+      "defaultFrame": 204
+    }
+  ]
+}
