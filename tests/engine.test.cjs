@@ -104,6 +104,40 @@ test('changing transparency preserves a disabled liver layer and the public API 
   assert.equal(sandbox.window.Vis2Reg.getState().frameIdx, 1);
 });
 
+test('front, top and side presets keep the complete frame 204 anatomy inside the camera frustum', () => {
+  const { sandbox, run } = harness();
+  prepareViewer(run);
+  // Use the distributed anatomy and its recorded pose: this frame previously
+  // clipped the lower liver in Front view despite fitting its 2D bounding size.
+  sandbox.recordedMeta = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'frames.json'), 'utf8'));
+  sandbox.recordedMesh = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'meshes.json'), 'utf8'));
+  run(`META=recordedMeta;MESH=recordedMesh;
+    baseMats=META.frames.map(frame=>I4().fromArray(frame.m));
+    STRUCT_KEYS=Object.keys(MESH.meshes).filter(key=>key!=='liver');rebuildMeshes();`);
+  const api = sandbox.window.Vis2Reg;
+  api.setFrame(204);
+  assert.equal(api.getState().frameIdx, 204);
+  for (const preset of ['front', 'top', 'side']) {
+    api.presetView(preset);
+    const camera = run('camera');
+    camera.updateMatrixWorld(true);
+    const projected = new THREE.Vector3();
+    let checked = 0;
+    for (const part of Object.values(run('parts')).filter(part=>part.visible)) {
+      const positions = part.geometry.attributes.position;
+      for (let index=0;index<positions.count;index++) {
+        projected.fromBufferAttribute(positions,index).applyMatrix4(part.matrixWorld).project(camera);
+        for (const axis of ['x','y','z']) {
+          assert.ok(Number.isFinite(projected[axis]) && Math.abs(projected[axis]) <= 1 + 1e-6,
+            `${preset}: ${part.userData.name} vertex ${index} is outside ${axis} clip range (${projected[axis]})`);
+        }
+        checked++;
+      }
+    }
+    assert.ok(checked > 7000, 'The projection check must cover the complete visible anatomy');
+  }
+});
+
 test('out-of-order case fetches retain the latest case, geometry, and storage scope', async () => {
   const pending = new Map();
   const { sandbox, run } = harness(url => new Promise(resolve => pending.set(url, resolve)));

@@ -548,7 +548,7 @@ function presetView(w){if(!META||loadingCase||!['front','top','side'].includes(w
   const c=bounds.getCenter(new THREE.Vector3());
   const size=bounds.getSize(new THREE.Vector3()),halfFov=38*Math.PI/360,aspect=META.W/META.H;
   const horizontal=w==='side'?size.z:size.x,vertical=w==='top'?size.z:size.y,depth=w==='front'?size.z:w==='top'?size.y:size.x;
-  const r=(Math.max(vertical/(2*Math.tan(halfFov)),horizontal/(2*Math.tan(halfFov)*aspect))+depth*.25)*1.08;
+  const r=(Math.max(vertical/(2*Math.tan(halfFov)),horizontal/(2*Math.tan(halfFov)*aspect))+depth*.5)*1.12;
   const off={front:[0,0,r],top:[0,-r,0.001],side:[r,0,0.001]}[w]; tween=null;
   camera.position.set(c.x+off[0],c.y+off[1],c.z+off[2]); controls.target.copy(c); camera.lookAt(c); controls.update(); }
 
