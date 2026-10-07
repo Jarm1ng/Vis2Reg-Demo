@@ -80,6 +80,8 @@ Views and edits use `localStorage` on the current website origin. They are not u
 
 **Funding:** EPSRC Grant UKRI914.
 
+**Group project:** [HARLI — AIMS, University of Leeds](https://aimsgroup-leeds.github.io/HARLI/). The viewer includes a direct link and an expandable QR code for this website.
+
 ## Development and deployment
 
 ```bash

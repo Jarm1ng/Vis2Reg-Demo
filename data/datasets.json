@@ -2,7 +2,7 @@
   "cases": [
     {
       "key": "p4video",
-      "label": "Patient 4 \u00b7 in-vivo video (manual reg)",
+      "label": "Patient 04 \u00b7 Laparoscopic sequence",
       "dir": ".",
       "type": "video",
       "defaultFrame": 204

@@ -266,3 +266,48 @@ dialog, .sv-dialog, #case-library-dialog {
   .presenting #transport, .viewer:fullscreen #transport { display: grid; grid-template-columns: 1fr 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { #guide, .sv-dialog[open] { animation: none; } }
+
+/* Group/project access remains available without adding another crowded nav item. */
+.group-project {
+  grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0,1fr) 80px;
+  align-items: center; gap: 12px; padding: 18px;
+  background: var(--surface); border-top: 1px solid var(--panel-b);
+}
+.group-project-copy { min-width: 0; }
+.group-project .eyebrow { font-size: 7px; letter-spacing: 1px; line-height: 1.7; }
+.group-project h2 { font-size: 17px; font-weight: 600; letter-spacing: -.35px; margin: 7px 0; }
+.group-project p { font-size: 10px; line-height: 1.5; color: var(--muted); margin: 0; }
+.group-project-link { display: inline-flex; gap: 6px; align-items: center; min-height: 44px; font-size: 11px; color: var(--accent); text-underline-offset: 3px; }
+.group-project-link .icon { width: 13px; height: 13px; }
+.group-qr-preview { width: 80px; padding: 0; border: 0; border-radius: 7px; color: var(--muted); background: transparent; }
+.group-qr-preview img { display: block; width: 80px; height: 80px; background: #fff; border-radius: 6px; }
+.group-qr-preview span { display: block; padding-top: 6px; font-size: 9px; }
+.group-qr-preview:hover { color: var(--accent); }
+.app-footer { height: auto; min-height: 48px; }
+.app-footer > span:first-child { flex-wrap: wrap; gap: 7px; min-width: 0; }
+.group-footer-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); text-decoration: none; font-weight: 550; font-size: 10px; }
+.group-footer-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.group-footer-qr { background: transparent; color: var(--muted); min-height: 44px; padding: 0 8px; font-size: 9px; text-decoration: underline; text-underline-offset: 3px; border-radius: 5px; }
+.group-footer-qr:hover { color: var(--accent); background: var(--surface); }
+#group-dialog { width: min(410px,calc(100vw - 28px)); text-align: center; }
+#group-dialog .eyebrow { justify-content: center; padding: 12px 20px 0; font-size: 8px; }
+#group-dialog h2 { font-size: 28px; margin: 12px 0 4px; }
+#group-dialog > p { margin: 4px 0 18px; }
+.group-qr-large { display: block; width: min(264px,100%); height: auto; aspect-ratio: 1; margin: 0 auto 20px; background: #fff; border-radius: 12px; }
+.group-visit { width: 100%; min-height: 44px; }
+#group-dialog .group-url { margin: 13px 0 0; font-size: 10px; overflow-wrap: anywhere; }
+@media (any-pointer:coarse), (max-width:980px) {
+  .group-project p, .group-project-link { font-size: 12px; }
+  .group-project .eyebrow { font-size: 8px; }
+  .group-footer-link, .group-footer-qr { font-size: 11px; }
+}
+@media (max-height:600px) and (min-width:500px) {
+  #group-dialog[open] { display: grid; grid-template-columns: 180px minmax(0,1fr); align-items: center; column-gap: 18px; row-gap: 6px; width: min(610px,calc(100vw - 28px)); padding: 20px; }
+  #group-dialog .eyebrow { grid-column: 2; grid-row: 1; padding: 8px 22px 0 0; }
+  #group-dialog h2 { grid-column: 2; grid-row: 2; font-size: 25px; margin: 0; }
+  #group-dialog > p:not(.group-url) { grid-column: 2; grid-row: 3; margin: 0; }
+  #group-dialog .group-qr-large { grid-column: 1; grid-row: 1 / 6; width: 180px; max-width: 100%; margin: 0; }
+  #group-dialog .group-visit { grid-column: 2; grid-row: 4; }
+  #group-dialog .group-url { grid-column: 2; grid-row: 5; margin: 0; font-size: 9px; }
+  #group-dialog .dialog-close { top: 5px; right: 5px; }
+}

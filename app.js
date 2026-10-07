@@ -204,7 +204,7 @@ async function init(){
   CASES = (await fetchJSON('data/datasets.json')).cases;
   if(!Array.isArray(CASES)||!CASES.length)throw Error('No cases are available.');
   const sel=$('case-sel'); sel.innerHTML='';
-  CASES.forEach((c,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=c.label; sel.appendChild(o); });
+  CASES.forEach((c,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=c.key==='p4video'?'Patient 04 · Laparoscopic sequence':c.label; sel.appendChild(o); });
   const launchParams=new URLSearchParams(location.search);
   const requested=CASES.findIndex(c=>c.key===launchParams.get('case'));
   const last = CASES.findIndex(c=>c.key===storage.get('vis2reg_lastcase'));
@@ -355,7 +355,7 @@ function setFrame(i){
   const src=frameSource();
   if(bgImg.getAttribute('src')!==src){
     const token=++imageLoadToken;frameImageReady=false;syncImageVisibility();bgImg.src=src;
-    bgImg.alt=(curCase.type==='images'?'Laparoscopic image ':'Laparoscopic video frame ')+(f.name??frameIdx);
+    bgImg.alt=(curCase.type==='images'?'Laparoscopic image ':'Laparoscopic frame ')+(f.name??frameIdx);
     emit('image',{index:frameIdx,loading:true});
     const ready=()=>{if(token!==imageLoadToken||!bgImg.complete||!bgImg.naturalWidth)return;
       frameImageReady=true;syncImageVisibility();emit('image',{index:frameIdx,loading:false});preloadFrames();};
@@ -565,8 +565,8 @@ function updateModeBadge(){
   else if(editMode==='struct')b.textContent='Editing · '+((MESH.labels&&MESH.labels[editStruct])||editStruct);
   else if(editMode==='deform')b.textContent='Editing · deformation';
   else if(mode==='explore')b.textContent='3D anatomy exploration';
-  else if(META.editableBase)b.textContent=frameDeltas[frameIdx]?'Manual alignment · edited':'Default pose · alignment required';
-  else b.textContent='Manual registration · recorded sequence';
+  else if(META.editableBase)b.textContent=frameDeltas[frameIdx]?'Edited anatomy overlay':'Anatomy overlay';
+  else b.textContent='AR anatomy overlay';
   b.style.color=editMode!=='off'?'var(--t1)':mode==='reg'?'var(--accent2)':'var(--t1)';
 }
 function setMode(m){if(!META||loadingCase||!['reg','explore'].includes(m))return;
@@ -733,5 +733,5 @@ function wireUI(){
 }
 function togglePlay(){if(!META||loadingCase||editMode!=='off'||mode!=='reg')return;playing=!playing;updatePlayIcon();}
 function updatePlayIcon(){if(!$('play-i'))return;$('play-i').innerHTML=playing?'<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';
-  $('play').setAttribute('aria-label',playing?'Pause':curCase&&curCase.type==='images'?'Play image sequence':'Play recorded sequence');
+  $('play').setAttribute('aria-label',playing?'Pause':curCase&&curCase.type==='images'?'Play image sequence':'Play laparoscopic sequence');
   $('play').setAttribute('aria-pressed',String(playing));$('play').disabled=loadingCase||editMode!=='off'||mode!=='reg';emit('playback',{playing});}

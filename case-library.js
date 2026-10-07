@@ -19,7 +19,7 @@
   heading.append(create('div', 'eyebrow', 'THE CASE COLLECTION'));
   const title = create('h2', '', 'Explore a different perspective.');
   title.id = 'case-library-title';
-  const description = create('p', '', 'Patient 04 · a recorded laparoscopic sequence.');
+  const description = create('p', '', 'Patient 04 · a laparoscopic sequence.');
   description.id = 'case-library-description';
   heading.append(title, description);
   const close = create('button', 'icon-btn case-library-close', '×');
@@ -29,7 +29,7 @@
   header.append(heading, close);
   const content = create('div', 'case-library-content');
   const footer = create('footer', 'case-library-footer');
-  footer.append(create('span', 'status-dot'), create('span', '', 'Prepared research data · Internal anatomy alignment is not validated in this viewer.'));
+  footer.append(create('span', 'status-dot'), create('span', '', 'Explore liver anatomy and internal structures.'));
   dialog.append(header, content, footer);
   document.body.append(dialog);
   launch.setAttribute('aria-haspopup', 'dialog');
@@ -79,7 +79,7 @@
       card.type = 'button';
       card.dataset.caseKey = c.key;
       card.disabled = !meta;
-      const label = caseName(c) + ' · ' + (isVideo ? 'Recorded sequence' : 'LLR-LUS image set');
+      const label = caseName(c) + ' · ' + (isVideo ? 'Laparoscopic sequence' : 'LLR-LUS image set');
       card.setAttribute('aria-label', label + (active ? ', current case' : ', open case'));
       if (active) card.setAttribute('aria-current', 'true');
       const visual = create('span', 'case-card-visual');
@@ -93,7 +93,7 @@
         image.src = framePath(c, meta.frames[0]);
         visual.append(image);
       }
-      const tag = create('span', 'case-card-tag', isVideo ? 'RECORDED SEQUENCE' : 'LLR-LUS');
+      const tag = create('span', 'case-card-tag', isVideo ? 'LAPAROSCOPIC SEQUENCE' : 'LLR-LUS');
       visual.append(tag);
       if (active) visual.append(create('span', 'case-card-current', 'Current case'));
       const body = create('span', 'case-card-body');
@@ -102,8 +102,8 @@
       const stats = meta ? (meta.count + (isVideo ? ' frames' : ' images') +
         (isVideo && Number.isFinite(meta.fps) && meta.fps > 0 ? ' · ' + ((meta.count - 1) / meta.fps).toFixed(1) + ' s' : '')) : 'Details unavailable';
       body.append(create('span', 'case-card-stats', stats));
-      body.append(create('span', 'case-card-pose', isVideo ? 'Prepared manual poses' : 'Default pose · alignment required'));
-      body.append(create('span', 'case-card-note', isVideo ? 'Explore the recorded sequence with saved manual liver alignment.' : 'Inspect preoperative liver and tumour anatomy alongside individual images.'));
+      body.append(create('span', 'case-card-pose', '3D anatomy overlay'));
+      body.append(create('span', 'case-card-note', isVideo ? 'Explore liver anatomy through AR, comparison and interactive 3D views.' : 'Inspect preoperative liver and tumour anatomy alongside individual images.'));
       const action = create('span', 'case-card-action', active ? 'Continue exploring' : 'Open case');
       const arrow = create('span', '', '↗');
       arrow.setAttribute('aria-hidden', 'true');

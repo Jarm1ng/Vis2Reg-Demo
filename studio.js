@@ -164,7 +164,7 @@
   el('layer-list').addEventListener('change', paintFocus);
   window.addEventListener('vis2reg:case', e => {
     leaveCompare(); focused = null; paintFocus(); paintStatus();
-    el('sequence-note').textContent = e.detail.type === 'images' ? e.detail.count + ' recorded images' : 'Select a moment to explore';
+    el('sequence-note').textContent = e.detail.type === 'images' ? e.detail.count + ' images' : 'Select a moment to explore';
     el('capture-open').disabled = false;
   });
 
@@ -206,7 +206,7 @@
       const frameText = s.curCase.type === 'images' ? 'Image ' + (s.frameIdx + 1) : 'Frame ' + s.frameIdx;
       ctx.fillText(caseText + ' / ' + frameText + ' / ' + titles[mode], w - pad, header / 2);
       ctx.textAlign = 'left'; ctx.font = `${Math.round(w * .008)}px -apple-system, sans-serif`;
-      const scope = s.curCase.type === 'images' ? 'Preoperative anatomy · alignment unvalidated · research demonstration' : 'Prepared sequence · manual registration · illustrative anatomy · research demonstration';
+      const scope = 'Vis2Reg · liver anatomy · interactive visualisation';
       ctx.fillText(scope, pad, header + h + footer / 2);
       const blob = await new Promise((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(Error('The image could not be encoded.')), 'image/png'));
       if (captureURL) URL.revokeObjectURL(captureURL);
@@ -223,6 +223,24 @@
   el('capture-open').disabled = true;
   el('capture-close').onclick = () => el('capture-dialog').close();
   el('capture-dialog').addEventListener('close', () => { el('capture-open').focus(); });
+
+  const groupDialog = el('group-dialog');
+  let groupOpener = null;
+  document.querySelectorAll('[data-group-qr]').forEach(button => {
+    button.addEventListener('click', () => {
+      if (api()?.getState().playing) api().togglePlay();
+      el('guide').hidden = true;
+      groupOpener = button;
+      if (!groupDialog.open) groupDialog.showModal();
+    });
+  });
+  el('group-dialog-close').onclick = () => groupDialog.close();
+  groupDialog.addEventListener('close', () => groupOpener?.focus({preventScroll:true}));
+  groupDialog.addEventListener('click', event => {
+    if (event.target !== groupDialog) return;
+    const rect = groupDialog.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) groupDialog.close();
+  });
 
   window.addEventListener('keydown', e => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || document.querySelector('dialog[open]') ||
