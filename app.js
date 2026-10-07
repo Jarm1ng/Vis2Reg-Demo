@@ -18,7 +18,9 @@ let selected=null, annoEl=null, editStruct='tumour', STRUCT_KEYS=[];
 const REG_POS=new THREE.Vector3(0,0,0), REG_QUAT=new THREE.Quaternion();
 let assemblyCenter=new THREE.Vector3();
 let loadToken=0, loadingCase=false, hideLoadingTimer=null, layerState={}, resizeObserver=null;
-let restoreToken=0;
+let restoreToken=0,resizeFrame=0;
+let renderSize={width:0,height:0,pixelRatio:0};
+let cancelDeformGesture=()=>{},cancelTransformGesture=()=>{};
 const caseEdits=new Map();
 let imageLoadToken=0,frameImageReady=false;
 const frameImages=new Map();
@@ -226,6 +228,7 @@ async function init(){
   transformCtl.size=0.7; transformCtl.visible=false; transformCtl.enabled=false;
   transformCtl.addEventListener('dragging-changed',e=>{ controls.enabled=(!e.value&&mode==='explore'); });
   transformCtl.addEventListener('mouseUp',saveCurrentEdit);
+  setupTransformInput(transformCtl);
   scene.add(transformCtl);
 
   wireUI(); setupPicking();
@@ -233,8 +236,10 @@ async function init(){
     get frameDeltas(){return frameDeltas}, get structMats(){return structMats}, loadCase,
     pushStroke:(c,d,r)=>{ deformStrokes.push({c,d,r}); saveEdits(); applyDeform(); },
     get deformStrokes(){return deformStrokes} };
-  window.addEventListener('resize',onResize);
-  if(window.ResizeObserver){resizeObserver=new ResizeObserver(onResize);resizeObserver.observe($('stage-wrap'));}
+  window.addEventListener('resize',scheduleResize);
+  window.addEventListener('orientationchange',scheduleResize);
+  window.visualViewport?.addEventListener('resize',scheduleResize);
+  if(window.ResizeObserver){resizeObserver=new ResizeObserver(scheduleResize);resizeObserver.observe($('stage-wrap'));}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){playing=false;updatePlayIcon();}});
   await loadCase(CASES[startIdx]);
   if(META&&curCase?.key===CASES[startIdx].key){
@@ -246,6 +251,7 @@ async function init(){
 }
 
 async function loadCase(c,options={}){
+  cancelDeformGesture();cancelTransformGesture();
   const token=++loadToken,dir='data/'+c.dir;loadingCase=true;playing=false;updatePlayIcon();showLoading();
   try{
   const [mesh,meta]=await Promise.all([fetchJSON(dir+'/meshes.json'),fetchJSON(dir+'/frames.json')]);
@@ -380,6 +386,7 @@ function applyAllStruct(){ STRUCT_KEYS.forEach(applyStruct); }
 /* ---------- edit ---------- */
 function setEditMode(m){
   if(!META||loadingCase||!['off','reg','struct','deform'].includes(m))return;
+  cancelDeformGesture();cancelTransformGesture();
   if(curStroke){curStroke=null;applyDeform();}
   editMode=m; playing=false; updatePlayIcon();
   ['off','reg','struct','deform'].forEach(x=>$('em-'+x).classList.toggle('active',x===m));
@@ -398,7 +405,7 @@ function setEditMode(m){
     if(m==='deform'){ setMode('reg'); controls.enabled=false; select(null); $('mode-badge').textContent='✎ Deform — drag on the liver'; }
     else {select(null);controls.enabled=(mode!=='reg');}
   }
-  updateEditedBadge();updateModeBadge();emitMode();
+  syncTouchAction();updateEditedBadge();updateModeBadge();emitMode();
 }
 function setGizmo(m){ gizmoMode=m; transformCtl.setMode(m);
   ['translate','rotate','scale'].forEach(x=>$('gz-'+x).classList.toggle('active',x===m)); }
@@ -462,40 +469,76 @@ function applyDeform(){
   if(points&&parts.liver){points.geometry.attributes.position.array.set(parts.liver.geometry.attributes.position.array);points.geometry.attributes.position.needsUpdate=true;points.geometry.computeBoundingSphere();points.geometry.computeBoundingBox();}
 }
 function setupDeformDrag(dom){
-  let startWorld=null, startPx=null, depthZ=1;
+  let startWorld=null,startPx=null,depthZ=1,strokePointer=null;
+  function finish(commit){
+    const pointer=strokePointer;strokePointer=null;
+    if(curStroke){
+      if(commit&&Math.hypot(...curStroke.d)>1e-4){deformStrokes.push(curStroke);saveEdits();}
+      curStroke=null;applyDeform();
+    }
+    startWorld=null;startPx=null;
+    if(pointer!==null&&dom.hasPointerCapture(pointer))dom.releasePointerCapture(pointer);
+  }
+  cancelDeformGesture=()=>finish(false);
   dom.addEventListener('pointerdown',e=>{
-    if(editMode!=='deform'||loadingCase||e.button!==0||!parts.liver.visible)return;
+    if(editMode!=='deform'||loadingCase||e.button!==0||strokePointer!==null||e.isPrimary===false||!parts.liver.visible)return;
     const r=dom.getBoundingClientRect();
     const ndc=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
     raycaster.setFromCamera(ndc,camera);
-    const hit=raycaster.intersectObject(parts.liver,false)[0]; if(!hit) return;
+    const hit=raycaster.intersectObject(parts.liver,false)[0];if(!hit)return;
     const inv=group.matrixWorld.clone().invert();
-    const hl=hit.point.clone().applyMatrix4(inv);          // hit in liver-local (common) frame
+    const hl=hit.point.clone().applyMatrix4(inv);
     // Each new stroke acts in the current, already deformed common anatomy frame.
-    const c=[hl.x,hl.y,hl.z];
-    startWorld=hit.point.clone(); startPx=[e.clientX,e.clientY]; depthZ=Math.max(0.05,-hit.point.z);
-    curStroke={c, d:[0,0,0], r:brushRadius};
-    controls.enabled=false; dom.setPointerCapture(e.pointerId);
+    startWorld=hit.point.clone();startPx=[e.clientX,e.clientY];depthZ=Math.max(0.05,-hit.point.z);
+    curStroke={c:hl.toArray(),d:[0,0,0],r:brushRadius};strokePointer=e.pointerId;
+    controls.enabled=false;dom.setPointerCapture(e.pointerId);
   });
   dom.addEventListener('pointermove',e=>{
-    if(editMode!=='deform'||!curStroke) return;
+    if(editMode!=='deform'||!curStroke||e.pointerId!==strokePointer)return;
     const {fx,fy,W,H}=META,r=dom.getBoundingClientRect();
     const wdx=(depthZ/fx)*(e.clientX-startPx[0])*W/r.width;
     const wdy=-(depthZ/fy)*(e.clientY-startPx[1])*H/r.height;
     const inv=group.matrixWorld.clone().invert();
     const p0=startWorld.clone().applyMatrix4(inv);
     const p1=startWorld.clone().add(new THREE.Vector3(wdx,wdy,0)).applyMatrix4(inv);
-    curStroke.d=[p1.x-p0.x, p1.y-p0.y, p1.z-p0.z];
-    applyDeform();
+    curStroke.d=[p1.x-p0.x,p1.y-p0.y,p1.z-p0.z];applyDeform();
   });
-  dom.addEventListener('pointerup',e=>{
-    if(editMode!=='deform'||!curStroke) return;
-    const mag=Math.hypot(curStroke.d[0],curStroke.d[1],curStroke.d[2]);
-    if(mag>1e-4){ deformStrokes.push(curStroke); saveEdits(); }
-    curStroke=null; applyDeform();
-    if(dom.hasPointerCapture(e.pointerId))dom.releasePointerCapture(e.pointerId);
-  });
-  dom.addEventListener('pointercancel',()=>{if(curStroke){curStroke=null;applyDeform();}});
+  dom.addEventListener('pointerup',e=>{if(e.pointerId===strokePointer)finish(editMode==='deform');});
+  for(const type of ['pointercancel','lostpointercapture'])dom.addEventListener(type,e=>{if(e.pointerId===strokePointer)finish(false);});
+}
+// r128 TransformControls handles touch PointerEvents, but does not track their IDs
+// or cancellation. Keep its gizmo math and give each drag one owning pointer.
+function setupTransformInput(ctl){
+  const dom=ctl.domElement,doc=dom.ownerDocument;
+  const down=ctl._onPointerDown,move=ctl._onPointerMove,up=ctl._onPointerUp;
+  let pointer=null,snapshot=null;
+  dom.removeEventListener('pointerdown',down);doc.removeEventListener('pointerup',up);
+  function finish(e,cancelled=false){
+    if(pointer===null||e.pointerId!==pointer)return;
+    const id=pointer;pointer=null;
+    if(cancelled){
+      if(snapshot&&ctl.object===snapshot.object){
+        ctl.object.position.copy(snapshot.position);ctl.object.quaternion.copy(snapshot.quaternion);ctl.object.scale.copy(snapshot.scale);ctl.object.updateMatrix();
+      }
+      // Clear dragging before pointerUp so a cancelled drag is not saved.
+      ctl.dragging=false;ctl.axis=null;
+    }
+    up({button:0,clientX:e.clientX||0,clientY:e.clientY||0});doc.removeEventListener('pointermove',ctl._onPointerMove);
+    snapshot=null;if(dom.hasPointerCapture(id))dom.releasePointerCapture(id);syncTouchAction();
+  }
+  cancelTransformGesture=()=>{if(pointer!==null)finish({pointerId:pointer},true);};
+  ctl._onPointerDown=e=>{
+    if(!ctl.enabled||pointer!==null||e.button!==0||e.isPrimary===false)return;
+    pointer=e.pointerId;
+    const object=ctl.object;
+    snapshot=object?{object,position:object.position.clone(),quaternion:object.quaternion.clone(),scale:object.scale.clone()}:null;
+    down(e);if(ctl.dragging)dom.setPointerCapture(pointer);
+  };
+  ctl._onPointerMove=e=>{if(e.pointerId===pointer)move(e);};
+  ctl._onPointerUp=e=>finish(e);
+  dom.addEventListener('pointerdown',ctl._onPointerDown);doc.addEventListener('pointerup',ctl._onPointerUp);
+  doc.addEventListener('pointercancel',e=>finish(e,true));
+  dom.addEventListener('lostpointercapture',e=>finish(e,true));
 }
 function undoDeform(){ deformStrokes.pop(); saveEdits(); applyDeform(); }
 function resetDeform(){ deformStrokes=[]; curStroke=null; saveEdits(); applyDeform(); }
@@ -536,7 +579,7 @@ function setMode(m){if(!META||loadingCase||!['reg','explore'].includes(m))return
   bgImg.style.opacity=reg?1:0.12; scene.fog=(fog&&!reg)?new THREE.Fog(0x0a1420,2.2,6.5):null;
   if(reg){if(editMode!=='off'){tween=null;camera.position.copy(REG_POS);camera.quaternion.copy(REG_QUAT);}else tweenCamera(REG_POS,REG_QUAT);}
   else {tween=null;const c=assemblyCenter.clone().applyMatrix4(group.matrixWorld);controls.target.copy(c);controls.update();}
-  emitMode();}
+  syncTouchAction();emitMode();}
 let tween=null;
 function tweenCamera(pos,quat){ tween={t:0,p0:camera.position.clone(),q0:camera.quaternion.clone(),pos:pos.clone(),quat:quat.clone()}; }
 function stepTween(dt){ if(!tween)return; tween.t=Math.min(1,tween.t+dt*2.2); const e=1-Math.pow(1-tween.t,3);
@@ -554,21 +597,56 @@ function presetView(w){if(!META||loadingCase||!['front','top','side'].includes(w
 
 /* ---------- pick / label ---------- */
 const raycaster=new THREE.Raycaster();
-function setupPicking(){ annoEl=document.createElement('div'); annoEl.id='anno'; annoEl.style.display='none'; $('stage').appendChild(annoEl);
-  const dom=renderer.domElement; let sx=0,sy=0,downT=0,moved=false; dom.style.cursor='crosshair';
-  let held=false,replaying=false;
-  dom.addEventListener('pointerdown',e=>{if(replaying)return;sx=e.clientX;sy=e.clientY;moved=false;held=e.button===0;downT=performance.now();});
+function syncTouchAction(){
+  if(renderer)renderer.domElement.style.touchAction=mode==='explore'||editMode!=='off'?'none':'pan-y pinch-zoom';
+}
+function setupPicking(){
+  annoEl=document.createElement('div');annoEl.id='anno';annoEl.style.display='none';$('stage').appendChild(annoEl);
+  const dom=renderer.domElement,active=new Set();let gesture=null,replaying=false;
+  dom.style.cursor='crosshair';syncTouchAction();
+  dom.addEventListener('pointerdown',e=>{
+    if(replaying)return;
+    active.add(e.pointerId);
+    if(active.size>1){if(gesture)gesture.blocked=true;return;}
+    gesture={id:e.pointerId,x:e.clientX,y:e.clientY,time:performance.now(),moved:false,
+      blocked:e.button!==0||e.isPrimary===false||transformCtl.dragging};
+  });
   dom.addEventListener('pointermove',e=>{
-    if(held&&mode==='reg'&&editMode==='off'&&!loadingCase&&Math.hypot(e.clientX-sx,e.clientY-sy)>6){
+    if(!gesture||e.pointerId!==gesture.id)return;
+    if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)<=6)return;
+    gesture.moved=true;
+    // Browsing touch gestures belong to the page. Enter 3D explicitly to orbit.
+    if(!gesture.blocked&&active.size===1&&e.pointerType!=='touch'&&mode==='reg'&&editMode==='off'&&!loadingCase){
       setMode('explore');replaying=true;
-      dom.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:e.pointerId,pointerType:e.pointerType,clientX:sx,clientY:sy,button:0,buttons:1}));
-      replaying=false;moved=true;
+      dom.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:e.pointerId,pointerType:e.pointerType,
+        clientX:gesture.x,clientY:gesture.y,button:0,buttons:1}));
+      replaying=false;
     }
   },true);
-  dom.addEventListener('pointermove',e=>{if(Math.hypot(e.clientX-sx,e.clientY-sy)>6) moved=true;});
-  dom.addEventListener('pointerup',e=>{held=false;if(loadingCase||transformCtl.dragging||editMode==='deform')return;if(!moved&&performance.now()-downT<500)pick(e);});
-  dom.addEventListener('pointercancel',()=>{held=false;moved=true;});
-  setupDeformDrag(dom); }
+  function finish(e,canPick){
+    if(!active.delete(e.pointerId))return;
+    if(!gesture||e.pointerId!==gesture.id)return;
+    const candidate=gesture;gesture=null;
+    const moved=candidate.moved||Math.hypot(e.clientX-candidate.x,e.clientY-candidate.y)>6;
+    if(canPick&&!candidate.blocked&&!moved&&active.size===0&&performance.now()-candidate.time<500&&
+      !loadingCase&&!transformCtl.dragging&&editMode!=='deform')pick(e);
+  }
+  dom.addEventListener('pointerup',e=>finish(e,true));
+  for(const type of ['pointercancel','lostpointercapture'])dom.addEventListener(type,e=>finish(e,false));
+  // A pointer released outside the canvas cannot leave a stale tap candidate.
+  dom.ownerDocument.addEventListener('pointerup',e=>finish(e,false));
+  dom.ownerDocument.addEventListener('pointercancel',e=>finish(e,false));
+  // OrbitControls r128 resets on touchend, but has no touchcancel handler. It also
+  // needs a fresh start position when a pinch ends with one finger still down.
+  dom.addEventListener('touchcancel',()=>dom.dispatchEvent(new Event('touchend')),{passive:true});
+  dom.addEventListener('touchend',e=>{
+    if(controls.enabled&&e.touches?.length){
+      const restart=new Event('touchstart',{cancelable:true});
+      Object.defineProperty(restart,'touches',{value:e.touches});dom.dispatchEvent(restart);
+    }
+  },{passive:true});
+  setupDeformDrag(dom);
+}
 function pick(e){ const r=renderer.domElement.getBoundingClientRect();
   const ndc=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
   raycaster.setFromCamera(ndc,camera);
@@ -600,10 +678,25 @@ function loop(t){ const dt=Math.min(0.05,(t-lastT)/1000)||0; lastT=t;
   if(mode==='explore'){ if(scene.fog){const distance=camera.position.distanceTo(controls.target);scene.fog.near=distance;scene.fog.far=distance+Math.max(.8,distance*.9);scene.fog.color.setHex(0x14251b);} if(spin){ const c=controls.target; camera.position.sub(c);
     camera.position.applyAxisAngle(new THREE.Vector3(0,1,0),dt*0.4); camera.position.add(c);} controls.update(); }
   renderer.render(scene,camera); requestAnimationFrame(loop); }
-function onResize(){if(!renderer)return;const s=$('stage'),wrap=$('stage-wrap'),aspect=META?META.W/META.H:16/9;
-  const mobilePage=window.innerWidth<=760&&!document.fullscreenElement&&!document.body.classList?.contains('presenting');
-  const w=Math.max(1,mobilePage?wrap.clientWidth:Math.min(wrap.clientWidth,wrap.clientHeight*aspect)),h=w/aspect;
-  s.style.width=w+'px';s.style.height=h+'px';s.style.aspectRatio=String(aspect);s.style.setProperty('--image-aspect',String(aspect));renderer.setSize(w,h,false);if(META)setProjection();}
+function scheduleResize(){
+  if(resizeFrame)return;
+  resizeFrame=requestAnimationFrame(()=>{resizeFrame=0;onResize();});
+}
+function onResize(){
+  if(!renderer)return;
+  const s=$('stage'),wrap=$('stage-wrap'),aspect=META?META.W/META.H:16/9;
+  const flow=typeof getComputedStyle==='function'?getComputedStyle($('app')).getPropertyValue('--workspace-flow').trim():'';
+  const stacked=(flow?flow==='stacked':window.innerWidth<=980)&&!document.fullscreenElement&&!document.body.classList?.contains('presenting');
+  if(!wrap.clientWidth||(!stacked&&!wrap.clientHeight))return;
+  const w=stacked?wrap.clientWidth:Math.min(wrap.clientWidth,wrap.clientHeight*aspect),h=w/aspect;
+  s.style.width=w+'px';s.style.height=h+'px';s.style.aspectRatio=String(aspect);s.style.setProperty('--image-aspect',String(aspect));
+  const pixelRatio=Math.min(window.devicePixelRatio||(typeof devicePixelRatio==='number'?devicePixelRatio:1),2);
+  const width=Math.floor(w*pixelRatio),height=Math.floor(h*pixelRatio);
+  if(width!==renderSize.width||height!==renderSize.height||pixelRatio!==renderSize.pixelRatio){
+    if(renderer.getPixelRatio&&renderer.getPixelRatio()!==pixelRatio)renderer.setPixelRatio(pixelRatio);
+    renderer.setSize(w,h,false);renderSize={width,height,pixelRatio};
+  }
+}
 
 /* ---------- UI ---------- */
 function wireUI(){

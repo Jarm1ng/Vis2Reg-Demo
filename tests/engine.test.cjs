@@ -8,20 +8,25 @@ const THREE = require('../lib/three.min.js');
 
 function harness(fetch) {
   const elements = new Map(),events=[];
+  const documentTarget=new EventTarget();
   function element(id) {
-    if (!elements.has(id)) elements.set(id, {
+    if (!elements.has(id)) elements.set(id, Object.assign(new EventTarget(), {
       style: {setProperty(key,value){this[key]=value;}}, value: id === 'opacity' ? '45' : '0', dataset: {},
-      classList: { toggle() {} }, setAttribute() {}, getAttribute() { return null; },
-      addEventListener() {}, appendChild() {}, replaceChildren() {},
-      clientWidth: 960, clientHeight: 540
-    });
+      classList: { toggle() {},contains(){return false;} }, setAttribute() {}, getAttribute() { return null; },
+      appendChild() {}, replaceChildren() {}, ownerDocument:documentTarget,
+      clientWidth: 960, clientHeight: 540, width:960,height:540,
+      getBoundingClientRect(){return {left:0,top:0,width:this.clientWidth,height:this.clientHeight};},
+      captures:new Set(),setPointerCapture(id){this.captures.add(id);},hasPointerCapture(id){return this.captures.has(id);},
+      releasePointerCapture(id){this.captures.delete(id);this.dispatchEvent(Object.assign(new Event('lostpointercapture'),{pointerId:id}));}
+    }));
     return elements.get(id);
   }
   const sandbox = {
-    THREE, console, URL, Blob, setTimeout, clearTimeout, fetch,
+    THREE, console, URL, Blob, Event, setTimeout, clearTimeout, fetch,
+    PointerEvent:class extends Event{constructor(type,init){super(type,init);const {bubbles,cancelable,composed,...properties}=init;Object.assign(this,properties);}},
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
-    window: { dispatchEvent(event) {events.push(event);}, addEventListener() {} },
-    document: { getElementById: element, createElement: () => element('temporary'), querySelector:()=>null,querySelectorAll:()=>[],body: { appendChild() {} } },
+    window: { dispatchEvent(event) {events.push(event);}, addEventListener() {},focus(){} },
+    document: Object.assign(documentTarget,{getElementById:element,createElement:()=>element('temporary'),querySelector:()=>null,querySelectorAll:()=>[],body:{appendChild(){}}}),
     localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
     performance: { now: () => 0 }
   };
@@ -42,7 +47,7 @@ function prepareViewer(run){
     camera=new THREE.PerspectiveCamera(38,16/9,.01,100);camera.position.set(0,0,3);
     controls={target:new THREE.Vector3(),enabled:false,enableDamping:true,update(){}};
     transformCtl={detach(){},attach(){},setMode(){}};
-    renderer={domElement:{width:960,height:540,style:{},getBoundingClientRect(){return {width:960,height:540};}},
+    renderer={domElement:document.getElementById('gl'),
       capabilities:{isWebGL2:false},outputEncoding:THREE.sRGBEncoding,
       getContext(){return {isContextLost(){return false;}};},render(){},setSize(){},clear(){},
       getRenderTarget(){return this.target||null;},setRenderTarget(target){this.target=target;},
@@ -330,4 +335,132 @@ test('mobile sizing follows the source aspect ratio and uses full available widt
   run('META.W=4;META.H=3;onResize();');
   assert.equal(element('stage').style.width,'360px');assert.equal(element('stage').style.height,'270px');
   assert.equal(element('stage').style.aspectRatio,String(4/3));
+});
+
+
+// Event sequences exercise the application listeners with the distributed Three.js
+// controls. Real browser tests cover gesture default actions and viewport layout.
+function pointer(target,type,properties={}){
+  const event=Object.assign(new Event(type,{bubbles:true,cancelable:true}),{
+    pointerId:1,pointerType:'touch',isPrimary:true,button:type==='pointermove'?-1:0,
+    buttons:type==='pointerup'?0:1,clientX:240,clientY:200,...properties
+  });
+  target.dispatchEvent(event);
+  if(target.ownerDocument)target.ownerDocument.dispatchEvent(event);
+  return event;
+}
+function touch(target,type,points){
+  const event=Object.assign(new Event(type,{bubbles:true,cancelable:true}),{
+    touches:points.map(([pageX,pageY])=>({pageX,pageY,clientX:pageX,clientY:pageY}))
+  });
+  target.dispatchEvent(event);return event;
+}
+function prepareInput(h,withOrbit=false){
+  prepareViewer(h.run);
+  if(withOrbit){
+    vm.runInContext(fs.readFileSync(path.join(__dirname,'..','lib','OrbitControls.js'),'utf8'),h.sandbox);
+    h.run(`controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enabled=false;controls.enableDamping=false;`);
+  }
+  h.run('window.pickCount=0;pick=()=>window.pickCount++;setupPicking();');
+  return h.element('gl');
+}
+
+test('touch browsing scrolls without entering 3D, and cancelled or multi-touch gestures never pick',()=>{
+  const h=harness(),dom=prepareInput(h,true);
+  assert.equal(dom.style.touchAction,'pan-y pinch-zoom');
+  pointer(dom,'pointerdown');
+  assert.equal(touch(dom,'touchstart',[[240,200]]).defaultPrevented,false);
+  pointer(dom,'pointermove',{clientY:260});
+  assert.equal(touch(dom,'touchmove',[[240,260]]).defaultPrevented,false);
+  pointer(dom,'pointercancel');touch(dom,'touchcancel',[]);
+  assert.equal(h.sandbox.window.Vis2Reg.getState().mode,'reg');assert.equal(h.sandbox.window.pickCount,0);
+  pointer(dom,'pointerdown');pointer(dom,'pointerup');assert.equal(h.sandbox.window.pickCount,1);
+  pointer(dom,'pointerdown');pointer(dom,'pointerdown',{pointerId:2,isPrimary:false});
+  pointer(dom,'pointerup',{pointerId:2,isPrimary:false});pointer(dom,'pointerup');
+  assert.equal(h.sandbox.window.pickCount,1,'A two-finger gesture must not identify a structure');
+  pointer(dom,'pointerdown');pointer(dom,'pointercancel');pointer(dom,'pointerup');
+  assert.equal(h.sandbox.window.pickCount,1,'Cancelled contacts must not become taps');
+  pointer(dom,'pointerdown');pointer(dom,'pointerup',{clientY:220});
+  assert.equal(h.sandbox.window.pickCount,1,'A moved release must not pick even when a move event was missed');
+});
+
+test('mouse drag still enters 3D while touch orbit, pinch, pan, and remaining-finger orbit use native controls',()=>{
+  const h=harness(),dom=prepareInput(h,true),api=h.sandbox.window.Vis2Reg;
+  pointer(dom,'pointerdown',{pointerType:'mouse'});
+  pointer(dom,'pointermove',{pointerType:'mouse',clientX:280});pointer(dom,'pointerup',{pointerType:'mouse',clientX:280});
+  assert.equal(api.getState().mode,'explore');assert.equal(h.sandbox.window.pickCount,0);
+  api.presetView('front');assert.equal(dom.style.touchAction,'none');
+  const initial=h.run('camera.position.clone()');
+  pointer(dom,'pointerdown');touch(dom,'touchstart',[[240,200]]);
+  pointer(dom,'pointermove',{clientX:300});touch(dom,'touchmove',[[300,200]]);
+  assert.ok(h.run('camera.position').distanceTo(initial)>1e-3,'One-finger movement must rotate the camera');
+  pointer(dom,'pointerup',{clientX:300});touch(dom,'touchend',[]);
+  const distance=h.run('camera.position.distanceTo(controls.target)'),target=h.run('controls.target.clone()');
+  pointer(dom,'pointerdown');touch(dom,'touchstart',[[240,200]]);
+  pointer(dom,'pointerdown',{pointerId:2,isPrimary:false,clientX:360});touch(dom,'touchstart',[[240,200],[360,200]]);
+  touch(dom,'touchmove',[[220,230],[400,230]]);
+  assert.ok(h.run('camera.position.distanceTo(controls.target)')<distance,'Spreading fingers must zoom in');
+  assert.ok(h.run('controls.target').distanceTo(target)>1e-3,'Moving the midpoint must pan');
+  pointer(dom,'pointerup',{pointerId:2,isPrimary:false,clientX:400,clientY:230});touch(dom,'touchend',[[220,230]]);
+  const afterPinch=h.run('camera.position.clone()');touch(dom,'touchmove',[[260,230]]);
+  assert.ok(h.run('camera.position').distanceTo(afterPinch)>1e-3,'The remaining finger should continue orbiting');
+  pointer(dom,'pointercancel');touch(dom,'touchcancel',[]);
+  const afterCancel=h.run('camera.position.clone()');touch(dom,'touchmove',[[320,230]]);
+  assert.ok(h.run('camera.position').distanceTo(afterCancel)<1e-8,'Cancellation must clear the OrbitControls gesture');
+  assert.equal(h.sandbox.window.pickCount,0);
+  api.resetView();assert.equal(dom.style.touchAction,'pan-y pinch-zoom');
+});
+
+test('only the owning finger can move or commit a deformation and cancellation restores its geometry',()=>{
+  const h=harness(),dom=prepareInput(h);
+  h.run(`editMode='deform';syncTouchAction();group.updateMatrixWorld(true);
+    raycaster.intersectObject=()=>[{point:new THREE.Vector3(0,0,-1)}];`);
+  pointer(dom,'pointerdown');pointer(dom,'pointermove',{clientX:300});
+  const delta=h.run('JSON.stringify(curStroke.d)');
+  pointer(dom,'pointerdown',{pointerId:2,isPrimary:false});pointer(dom,'pointermove',{pointerId:2,isPrimary:false,clientX:400});
+  pointer(dom,'pointerup',{pointerId:2,isPrimary:false});
+  assert.equal(h.run('JSON.stringify(curStroke.d)'),delta);assert.equal(h.run('deformStrokes.length'),0);
+  pointer(dom,'pointerup',{clientX:300});assert.equal(h.run('deformStrokes.length'),1);assert.equal(dom.hasPointerCapture(1),false);
+  const committed=h.run('Array.from(parts.liver.geometry.attributes.position.array)');
+  pointer(dom,'pointerdown',{pointerId:3});pointer(dom,'pointermove',{pointerId:3,clientX:350});
+  pointer(dom,'pointercancel',{pointerId:3});
+  assert.equal(h.run('deformStrokes.length'),1);assert.equal(h.run('curStroke'),null);
+  assert.deepEqual(h.run('Array.from(parts.liver.geometry.attributes.position.array)'),committed);
+  pointer(dom,'pointerdown',{pointerId:4});pointer(dom,'pointermove',{pointerId:4,clientX:320});dom.releasePointerCapture(4);
+  assert.equal(h.run('curStroke'),null);assert.equal(h.run('deformStrokes.length'),1);
+});
+
+test('TransformControls accepts touch down without prior hover, isolates extra fingers, and rolls back cancellation',()=>{
+  const h=harness();prepareViewer(h.run);
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'..','lib','TransformControls.js'),'utf8'),h.sandbox);
+  h.run(`transformCtl=new THREE.TransformControls(camera,renderer.domElement);scene.add(transformCtl);transformCtl.attach(group);
+    transformCtl.pointerHover=()=>{transformCtl.axis='X';};
+    transformCtl.pointerDown=p=>{if(p.button===0)transformCtl.dragging=true;};
+    transformCtl.pointerMove=p=>{if(transformCtl.dragging)group.position.x=p.x;};
+    window.commits=0;transformCtl.addEventListener('mouseUp',()=>window.commits++);setupTransformInput(transformCtl);editMode='reg';`);
+  const dom=h.element('gl');pointer(dom,'pointerdown');
+  assert.equal(h.run('transformCtl.dragging'),true,'A touch down must perform the gizmo hover hit-test');
+  pointer(dom,'pointermove',{clientX:320});const position=h.run('group.position.x');
+  pointer(dom,'pointerdown',{pointerId:2,isPrimary:false});pointer(dom,'pointermove',{pointerId:2,isPrimary:false,clientX:420});
+  pointer(dom,'pointerup',{pointerId:2,isPrimary:false});
+  assert.equal(h.run('group.position.x'),position);assert.equal(h.run('transformCtl.dragging'),true);assert.equal(h.sandbox.window.commits,0);
+  pointer(dom,'pointercancel');assert.equal(h.run('group.position.x'),0);assert.equal(h.run('transformCtl.dragging'),false);
+  assert.equal(h.sandbox.window.commits,0);assert.equal(dom.hasPointerCapture(1),false);assert.equal(dom.style.touchAction,'none');
+  pointer(dom,'pointerdown',{pointerId:3});pointer(dom,'pointermove',{pointerId:3,clientX:400});pointer(dom,'pointerup',{pointerId:3,clientX:400});
+  assert.equal(h.sandbox.window.commits,1);assert.notEqual(h.run('group.position.x'),0);assert.equal(dom.style.touchAction,'none');
+});
+
+test('CSS layout flow drives exact sizing at tablet widths; unchanged resize avoids reallocating the canvas',()=>{
+  const h=harness();prepareViewer(h.run);h.sandbox.window.innerWidth=900;
+  const wrap=h.element('stage-wrap');wrap.clientWidth=860;wrap.clientHeight=200;
+  let flow='stacked';h.sandbox.getComputedStyle=()=>({getPropertyValue:()=>flow});
+  h.run('window.resizeCalls=[];renderer.setSize=(w,h)=>window.resizeCalls.push([w,h]);META.W=4;META.H=3;onResize();onResize();');
+  assert.equal(h.element('stage').style.height,'645px');assert.equal(h.sandbox.window.resizeCalls.length,1);
+  flow='contained';h.run('onResize();');assert.ok(Math.abs(parseFloat(h.element('stage').style.height)-200)<1e-10);
+  flow='stacked';h.sandbox.document.fullscreenElement={};h.run('onResize();');
+  assert.ok(Math.abs(parseFloat(h.element('stage').style.height)-200)<1e-10,'Fullscreen continues to fit inside available height');
+  h.sandbox.document.fullscreenElement=null;h.sandbox.window.devicePixelRatio=2;h.run('onResize();onResize();');
+  assert.equal(h.sandbox.window.resizeCalls.length,3,'A new pixel density causes one allocation, then settles');
+  wrap.clientWidth=620;h.run('onResize();');
+  assert.ok(Math.abs(parseFloat(h.element('stage').style.width)/parseFloat(h.element('stage').style.height)-4/3)<1e-12);
 });

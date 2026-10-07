@@ -1,0 +1,268 @@
+/* Responsive layout and input-sized controls. Loaded after all component skins. */
+:root { --visible-height: 100dvh; --visual-top: 0px; }
+html { -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; }
+body:has(dialog[open]) { overflow: hidden; }
+#app {
+  --workspace-flow: contained;
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+#main, #top, .workspace-heading, .workspace-actions, .viewer-toolbar, #panel,
+.view-tabs, .timeline, .viewer-caption > span { min-width: 0; }
+#stage { flex: none; }
+#stage-wrap { min-width: 0; }
+button, a, label.layer { touch-action: manipulation; }
+button, .btn { overflow-wrap: anywhere; }
+.viewer-caption { gap: 12px; }
+.viewer-caption > span { flex-wrap: wrap; }
+#source-status { flex-shrink: 1; }
+.display-options { flex-wrap: wrap; }
+.layer .name { min-width: 0; }
+.viewer-toolbar { gap: 5px; }
+.view-tabs { flex: 1; }
+.view-tabs button { justify-content: center; }
+.viewer-toolbar > .icon-btn { flex-shrink: 0; }
+#structure-focus { overscroll-behavior-x: contain; }
+.filmstrip { overscroll-behavior-x: contain; }
+
+/* A generous target around the thin track preserves precise visual feedback. */
+input[type="range"]:not(#compare-slider) {
+  height: 32px;
+  border-radius: 0;
+  background-size: 100% 4px;
+  background-position: center;
+  background-repeat: no-repeat;
+  touch-action: pan-y;
+}
+#scrub { background-size: 100% 4px; }
+input[type="range"]:not(#compare-slider)::-webkit-slider-thumb { width: 18px; height: 18px; }
+input[type="range"]:not(#compare-slider)::-moz-range-thumb { width: 14px; height: 14px; }
+#scrub::-webkit-slider-thumb { width: 16px; height: 16px; }
+#scrub::-moz-range-thumb { width: 14px; height: 14px; }
+.slider label { margin-bottom: 2px; }
+.range-ends { margin-top: 2px; }
+.timeline-meta { margin-bottom: 0; }
+
+/* The divider receives pointer input, rather than an invisible full-image range. */
+#comparison-ui { pointer-events: none; }
+#compare-slider {
+  pointer-events: auto; width: 44px; height: 100%;
+  inset: 0 auto 0 clamp(0px, calc(var(--compare, 50%) - 22px), calc(100% - 44px));
+  opacity: 0; touch-action: none; cursor: col-resize;
+}
+#compare-slider:focus-visible { opacity: 0; }
+#compare-grip {
+  position: absolute; top: 50%; left: clamp(22px, var(--compare, 50%), calc(100% - 22px));
+  transform: translate(-50%, -50%); width: 44px; height: 48px;
+  display: grid; place-items: center; pointer-events: none;
+  color: #213d27; background: #d9eccd; border: 1px solid #f2f9e8;
+  border-radius: 10px; box-shadow: 0 3px 12px #0004;
+}
+#compare-grip .icon { width: 23px; height: 23px; }
+#comparison-ui:focus-within #compare-grip { outline: 3px solid #fff; outline-offset: 3px; }
+#comparison-caption { gap: 10px; }
+#comparison-caption > span { min-width: 0; }
+
+/* Every dialog can scroll as one document; headers/actions never trap content. */
+dialog, .sv-dialog, #case-library-dialog {
+  max-height: calc(var(--visible-height) - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-width: calc(100% - 24px); overscroll-behavior: contain;
+  overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+.sv-dialog[open] { display: block; }
+.sv-grid { overflow: visible; min-height: 0; }
+.sv-header, .case-library-header { gap: 12px; }
+.sv-heading h2, .case-library-header h2 { overflow-wrap: anywhere; }
+.sv-toolbar, .sv-footer, .sv-form-footer, .capture-footer { flex-wrap: wrap; }
+.sv-form-footer > button { flex: 1; }
+.sv-input, dialog input, dialog textarea { font-size: 16px; }
+.sv-close, .dialog-close, #capture-close, .case-library-close { min-width: 44px; min-height: 44px; }
+.sv-close, .case-library-close { flex-shrink: 0; }
+.sv-filters { min-width: 0; }
+.sv-filter { white-space: normal; }
+#capture-dialog .capture-preview img { max-height: calc(var(--visible-height) * .54); }
+#guide {
+  max-width: calc(100vw - 32px);
+  max-height: calc(var(--visible-height) - 32px);
+  overflow: auto; overscroll-behavior: contain;
+}
+#guide-close { flex-shrink: 0; }
+#toast { bottom: max(16px, env(safe-area-inset-bottom)); }
+.keyboard-open dialog[open] {
+  position: fixed; top: calc(var(--visual-top) + 12px); bottom: auto;
+  margin-top: 0; max-height: calc(var(--visible-height) - 24px);
+}
+.keyboard-open .sv-header { padding: 14px 19px; }
+.keyboard-open .sv-heading p { display: none; }
+
+/* Portrait tablets get image-first page flow instead of a squeezed desktop rail. */
+@media (max-width: 980px), (max-width: 1180px) and (orientation: portrait) {
+  html { scrollbar-gutter: auto; }
+  #app { --workspace-flow: stacked; height: auto; min-height: 100dvh; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  #top { gap: 18px; height: auto; min-height: 68px; padding-block: 8px; }
+  .conference { display: none; }
+  .workspace-heading { padding: 20px 0; align-items: flex-start; gap: 15px; }
+  .workspace-intro { min-width: 0; }
+  .workspace-subtitle { display: block; }
+  h1 { font-size: clamp(25px, 3.5vw, 34px); }
+  #main { display: flex; flex-direction: column; gap: 18px; flex: none; min-height: 0; }
+  .viewer { min-height: 0; }
+  #stage-wrap { flex: none; height: auto; min-height: 0; }
+  #panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+  .panel-header, #edit-section, .scope-note { grid-column: 1 / -1; }
+  .case-section { border-top: 1px solid var(--panel-b); padding-top: 20px; }
+  .reveal-section, .view-section { border-left: 1px solid var(--panel-b); }
+  .section { padding: 20px; }
+  .app-footer { height: auto; min-height: 48px; padding-block: 12px; flex-wrap: wrap; gap: 8px; }
+  .workspace-actions { flex-wrap: wrap; }
+  .workspace-actions .btn { white-space: nowrap; }
+  .viewer-caption { min-height: 36px; padding: 8px 13px; }
+  #source-status { max-width: none; }
+  .film-frame { height: 62px; }
+  .film-frame span { font-size: 10px; }
+  #hint { font-size: 10px; max-width: calc(100% - 24px); }
+}
+
+/* Coarse input also applies to large touch monitors and hybrid laptops. */
+@media (any-pointer: coarse), (max-width: 980px) {
+  .icon-btn, #play, .transport-buttons .icon-btn, .sv-remove { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+  button, .btn, .text-btn, .focus-chip, .speed button, .sv-filter, .sv-button, .sv-open, .sv-text-button {
+    min-height: 44px;
+  }
+  .top-nav button { min-width: 44px; }
+  #present { min-height: 44px; height: 44px; }
+  .btn, .workspace-actions .btn, .btns .btn { font-size: 12px; padding: 10px 12px; }
+  .browse-cases, #compare-center { min-height: 44px; font-size: 11px; }
+  .view-tabs button { font-size: 12px; min-width: 0; padding: 8px 10px; line-height: 1.15; }
+  .viewer-toolbar { height: auto; min-height: 58px; padding: 6px 10px; }
+  .focus-chip { font-size: 11px; padding-inline: 10px; }
+  .anatomy-strip { min-height: 52px; padding: 4px 10px; }
+  .speed button { min-width: 44px; font-size: 12px; }
+  .transport-buttons { gap: 4px; }
+  #play { padding: 12px; }
+  #play svg { width: 20px; height: 20px; }
+  .transport-buttons .icon { width: 17px; height: 17px; }
+  .timeline-meta, #tcode { font-size: 10px; }
+  input[type="range"]:not(#compare-slider) { height: 44px; }
+  input[type="range"]:not(#compare-slider)::-webkit-slider-thumb { width: 23px; height: 23px; }
+  input[type="range"]:not(#compare-slider)::-moz-range-thumb { width: 20px; height: 20px; }
+  #scrub::-webkit-slider-thumb { width: 21px; height: 21px; }
+  .layer { min-height: 48px; padding-block: 10px; }
+  .layer .name, .display-options .name { font-size: 13px; }
+  .layer input { width: 36px; height: 22px; }
+  .layer input::after { width: 18px; height: 18px; }
+  .layer input:checked::after { transform: translateX(14px); }
+  #case-sel { min-height: 48px; font-size: 16px; }
+  .select-wrap > .icon { top: 18px; }
+  .section-title h2 { font-size: 15px; }
+  .section p, .slider label { font-size: 12px; }
+  .range-ends, .case-meta { font-size: 11px; }
+  .reveal-presets button { font-size: 12px; }
+  .display-options .layer { flex: 1; gap: 8px; }
+  .film-frame { min-height: 52px; }
+  .film-frame span { font-size: 10px; }
+  #hint { opacity: 1; }
+  #comparison-caption { padding-block: 0; }
+  .sv-filter, .sv-button, .sv-open { font-size: 13px; }
+  .sv-field-label { font-size: 13px; }
+  .sv-card h3 { font-size: 15px; }
+  .sv-note { font-size: 13px; }
+  .sv-mode-tag, .sv-case, .sv-settings { font-size: 11px; }
+}
+
+@media (max-width: 680px) {
+  #app { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+  #top { gap: 4px; min-height: 68px; }
+  .brand { font-size: 21px; gap: 7px; flex-shrink: 0; }
+  .brand-mark { width: 31px; height: 36px; }
+  .brand small { font-size: 6px; letter-spacing: 2px; }
+  .top-nav { display: flex; margin-left: auto; gap: 0; height: auto; }
+  .top-nav .nav-current, #about-open { display: none; }
+  #saved-views-open { font-size: 0; padding: 0; gap: 0; position: relative; }
+  #saved-views-open .icon { width: 19px; height: 19px; }
+  .nav-count { position: absolute; top: 2px; right: 0; margin: 0; }
+  .top-right { gap: 0; margin-left: 0; }
+  #help-open { display: none; }
+  #present { width: 44px; min-width: 44px; padding: 10px; }
+  #present span { display: none; }
+  .workspace-heading { flex-wrap: wrap; padding: 17px 0; }
+  .workspace-heading .eyebrow { font-size: 8px; letter-spacing: 1.3px; }
+  .workspace-subtitle { font-size: 11px; }
+  .workspace-actions { width: 100%; gap: 6px; flex-wrap: nowrap; }
+  .workspace-actions .btn { padding-inline: 9px; font-size: 11px; }
+  .guide-launch { margin-left: auto; max-width: none; font-size: 0; padding: 0; min-width: 44px; width: 44px; }
+  .guide-launch .icon { height: 32px; width: 32px; }
+  .viewer-toolbar { display: grid; grid-template-columns: minmax(0,1fr) 44px; padding: 5px 6px; gap: 3px; }
+  .view-tabs { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 2px; }
+  .view-tabs button { white-space: normal; font-size: 11px; padding: 6px 3px; }
+  .view-tabs .icon { display: none; }
+  #transport { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; padding: 3px 10px 9px; }
+  .timeline { grid-column: 1 / -1; grid-row: 1; width: 100%; }
+  .transport-buttons { grid-row: 2; justify-content: flex-start; }
+  .speed { display: flex; grid-row: 2; justify-content: flex-end; margin: 0; gap: 0; }
+  #tcode { gap: 4px; letter-spacing: 0; }
+  .viewer-caption { min-height: 32px; font-size: 9px; gap: 6px; }
+  .viewer-caption > span { gap: 4px; }
+  #source-status { font-size: 8px; max-width: 98px; }
+  .filmstrip { display: flex; overflow-x: auto; gap: 7px; padding: 4px 10px 12px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+  .film-frame { width: 88px; height: 54px; flex: 0 0 88px; scroll-snap-align: start; }
+  .filmstrip-heading { display: none; }
+  #panel { display: block; }
+  .reveal-section, .view-section { border-left: 0; }
+  .section { padding: 18px; }
+  .panel-header { padding: 18px; }
+  #mode-badge { top: 8px; left: 9px; font-size: 8px; padding: 5px 7px; }
+  #hint { font-size: 9px; bottom: 6px; left: 8px; padding: 5px 6px; max-width: calc(100% - 16px); }
+  .image-tag { display: none; }
+  #comparison-caption { font-size: 9px; padding-inline: 10px; }
+  #comparison-caption > span > .icon { display: none; }
+  #compare-center { font-size: 9px; gap: 4px; flex-shrink: 0; }
+  .comparison-labels span { font-size: 9px; }
+  dialog { padding: 22px 18px; }
+  .sv-dialog { padding: 0; }
+  .sv-toolbar { gap: 8px; }
+  .sv-header { padding: 20px 18px; }
+  .sv-filter { padding-inline: 9px; }
+  .sv-count { margin-left: auto; }
+  .sv-footer { padding: 14px 18px; }
+  #guide { inset: auto 12px max(12px, env(safe-area-inset-bottom)) auto; width: min(340px,calc(100vw - 24px)); max-width: none; padding: 16px 18px; }
+  #guide p { font-size: 12px; }
+  .guide-progress { margin: 8px 0 10px; }
+  #guide h2 { font-size: 21px; }
+}
+
+/* Contained viewing is explicit, independent of width and input type. */
+.presenting #app { --workspace-flow: contained; height: 100dvh; min-height: 0; }
+.presenting #main { flex: 1; min-height: 0; }
+.presenting .viewer { flex: 1; min-height: 0; }
+.presenting #stage-wrap, .viewer:fullscreen #stage-wrap { flex: 1; min-height: 0; }
+.presenting #panel { display: none; }
+.viewer:fullscreen { height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+@media (max-height: 600px) {
+  dialog, .sv-dialog, #case-library-dialog { max-height: calc(var(--visible-height) - 24px); }
+  .sv-header, .case-library-header { padding: 15px 18px; }
+  .sv-heading p { display: none; }
+  .sv-toolbar { padding-bottom: 12px; }
+  .sv-footer { padding: 12px 18px; }
+  .sv-grid { padding-bottom: 16px; }
+  #guide { top: max(12px, env(safe-area-inset-top)); bottom: auto; max-height: calc(var(--visible-height) - 24px); }
+  #guide h2 { font-size: 20px; }
+  #guide p { margin-bottom: 10px; }
+  .presenting #top { height: 48px; min-height: 48px; padding-block: 0; }
+  .presenting #main { padding-top: 4px; }
+  .presenting .app-footer, .presenting .anatomy-strip, .presenting .filmstrip, .presenting .filmstrip-heading,
+  .viewer:fullscreen .anatomy-strip, .viewer:fullscreen .filmstrip, .viewer:fullscreen .filmstrip-heading { display: none; }
+  .presenting .viewer-toolbar, .viewer:fullscreen .viewer-toolbar { min-height: 48px; height: auto; padding-block: 2px; }
+  .presenting .viewer-caption, .viewer:fullscreen .viewer-caption { display: none; }
+  .presenting #transport, .viewer:fullscreen #transport { display: flex; padding: 3px 10px; gap: 8px; }
+  .presenting .timeline, .viewer:fullscreen .timeline { flex: 1; width: auto; }
+  .presenting .transport-buttons, .viewer:fullscreen .transport-buttons { flex-shrink: 0; }
+  .presenting .speed, .viewer:fullscreen .speed { flex-shrink: 0; }
+  .presenting #comparison-caption, .viewer:fullscreen #comparison-caption { display: none; }
+}
+@media (max-height: 600px) and (max-width: 480px) {
+  .presenting #transport, .viewer:fullscreen #transport { display: grid; grid-template-columns: 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { #guide, .sv-dialog[open] { animation: none; } }

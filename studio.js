@@ -54,6 +54,34 @@
   };
   el('mode-compare').onclick = enterCompare;
   el('compare-slider').addEventListener('input', e => paintCompare(e.target.value));
+  // Only the divider owns a drag. The rest of the image remains available for
+  // page scrolling on touchscreens. Keep the native range for keyboard/AT use.
+  const compareInput = el('compare-slider');
+  let comparePointer = null;
+  function moveComparison(event) {
+    const rect = el('stage').getBoundingClientRect();
+    if (rect.width > 0) paintCompare(Math.round((event.clientX - rect.left) / rect.width * 100));
+  }
+  compareInput.addEventListener('pointerdown', event => {
+    if (!comparing || event.button !== 0 || comparePointer !== null) return;
+    event.preventDefault();
+    comparePointer = event.pointerId;
+    compareInput.focus({preventScroll:true});
+    compareInput.setPointerCapture(event.pointerId);
+    moveComparison(event);
+  });
+  compareInput.addEventListener('pointermove', event => {
+    if (event.pointerId === comparePointer) { event.preventDefault(); moveComparison(event); }
+  });
+  function finishComparison(event) {
+    if (event.pointerId !== comparePointer) return;
+    if (event.type === 'pointerup') moveComparison(event);
+    comparePointer = null;
+    if (compareInput.hasPointerCapture(event.pointerId)) compareInput.releasePointerCapture(event.pointerId);
+  }
+  compareInput.addEventListener('pointerup', finishComparison);
+  compareInput.addEventListener('pointercancel', finishComparison);
+  compareInput.addEventListener('lostpointercapture', () => { comparePointer = null; });
   el('compare-center').onclick = () => paintCompare(50);
   ['mode-reg','mode-raw','mode-explore','v-front','v-top','v-side','v-reset','em-reg','em-struct','em-deform'].forEach(id => {
     el(id).addEventListener('click', () => { if (comparing) { leaveCompare(); window.dispatchEvent(new Event('resize')); } });

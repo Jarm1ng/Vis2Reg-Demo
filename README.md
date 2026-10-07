@@ -48,6 +48,18 @@ All scripts, models and frames are bundled; no inference server, API key, CDN, o
 
 Input controls and dialogs retain their normal keyboard behavior. In 3D mode, drag to orbit and scroll to zoom.
 
+## Touchscreens and screen sizes
+
+- Phones and portrait tablets use a full-width viewer with controls below it. Wider screens retain the side panel. Image and model proportions stay aligned when the device rotates or the window changes size.
+- In **AR** and **Original**, swipe vertically over the image to scroll the page. Tap an internal structure to identify it in AR. Choose **3D anatomy** before rotating the model with a finger.
+- In **3D anatomy**, use one finger to rotate, pinch with two fingers to zoom, or move two fingers together to pan. Cancelling a touch gesture does not leave the model or editor stuck in a drag.
+- In **Compare**, drag the visible divider. Other parts of the image remain available for page scrolling. The divider also supports arrow keys, Home and End.
+- Touchscreen controls have larger hit areas, including on tablets and large touch displays. Phone keyframes can be swiped horizontally, and the timeline has a larger draggable area.
+- Presentation mode keeps the image and playback controls within short landscape screens. If the browser cannot enter native fullscreen, the expand button uses presentation layout and clearly indicates how to collapse it.
+- Dialogs scroll within the available screen area; text inputs use a readable size and respond to the on-screen keyboard's visible viewport.
+
+**中文：** 手机和平板竖屏采用上下布局，横屏和桌面保留合适的影像比例。AR 画面可上下滑动页面；进入 3D 后单指旋转、双指缩放和平移。对比模式只拖动分隔手柄，画面其余区域仍可滚动。触屏按钮、时间轴、弹窗和横屏演示布局均做了适配。
+
 ## Data and scientific scope
 
 This public release contains **only Patient 04**, with a liver mesh, two illustrative tumour structures, a vena cava structure, and a prepared laparoscopic sequence. The four LLR-LUS image sets used in the local workspace are **not distributed** here.
@@ -81,6 +93,14 @@ bash -n serve.sh launch.command build_frames.sh
 ```
 
 Node.js 18+ is needed only for these checks. The UI and WebGL rendering should also be checked in a real browser.
+
+Optional real-browser checks use Playwright and Chromium (Node.js 20+):
+
+```bash
+node tests/responsive-browser.cjs
+```
+
+Install Playwright in your development environment, or set `PLAYWRIGHT_MODULE` to an existing module directory. Set `CHROME_EXECUTABLE` to use an installed Chrome/Chromium executable. The script starts its own local server and isolated browser profile; it does not connect to your normal browser. `QA_OUTPUT=/path/to/output` optionally saves screenshots and a JSON report. It checks phone, tablet, desktop and large-touchscreen dimensions, real touch input events, rotation, dialog scrolling, comparison gestures and fullscreen fallback. Touch emulation complements physical-device testing; it does not reproduce every mobile browser or operating-system keyboard.
 
 GitHub Pages serves the repository root from `main`. The `.nojekyll` file disables Jekyll processing; no build step is needed. Assets use relative URLs so that project-site paths work correctly.
 
