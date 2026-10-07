@@ -62,6 +62,7 @@ async function layout(page) {
       }
     }
     return { viewport:{width:innerWidth,height:innerHeight}, documentWidth:document.documentElement.scrollWidth, bodyWidth:document.body.scrollWidth,
+      viewer:rect('.viewer'), fullscreen:rect('#stage-fullscreen'),
       stage:rect('#stage'), image:rect('#bg'), canvas:rect('#gl'), transport:rect('#transport'), play:rect('#play'),
       naturalRatio:document.querySelector('#bg').naturalWidth/document.querySelector('#bg').naturalHeight, overlap,
       coarse:matchMedia('(pointer: coarse)').matches,
@@ -75,6 +76,11 @@ function assertLayout(state, label, presenting = false) {
   for (const key of ['image','canvas']) for (const dimension of ['x','y','width','height']) assert.ok(Math.abs(state.stage[dimension]-state[key][dimension])<1, label + ' ' + key + ' differs from stage ' + dimension);
   assert.deepEqual(state.overlap, [], label + ' control groups overlap');
   if (presenting) {
+    assert.ok(Math.abs(state.viewer.x)<1 && Math.abs(state.viewer.y)<1 && Math.abs(state.viewer.width-state.viewport.width)<2 && Math.abs(state.viewer.height-state.viewport.height)<2,
+      label + ' viewer does not cover the viewport: '+JSON.stringify({viewer:state.viewer,viewport:state.viewport}));
+    assert.ok(state.fullscreen.x>=-1 && state.fullscreen.y>=-1 && state.fullscreen.right<=state.viewport.width+1 && state.fullscreen.bottom<=state.viewport.height+1,
+      label + ' exit fullscreen button is outside the viewport: '+JSON.stringify(state.fullscreen));
+    assert.ok(state.fullscreen.width>=43.5 && state.fullscreen.height>=43.5,label+' fullscreen exit target is too small');
     assert.ok(state.transport.y >= -1 && state.transport.bottom <= state.viewport.height+1, label + ' transport is outside the presentation viewport: ' + JSON.stringify(state.transport));
     assert.ok(state.play.y >= -1 && state.play.bottom <= state.viewport.height+1, label + ' play is outside the presentation viewport');
   }
@@ -89,6 +95,25 @@ async function drag(client, from, to, cancel=false) {
 }
 async function stageBox(page) { await page.locator('#stage').scrollIntoViewIfNeeded(); await settle(page); return page.locator('#stage').boundingBox(); }
 function cameraDistance(camera) { return Math.hypot(...camera.position.map((value,index)=>value-camera.target[index])); }
+async function assertFullscreenControls(page, active) {
+  for(const selector of ['#present','#stage-fullscreen']){
+    assert.equal(await page.locator(selector).getAttribute('aria-label'),active?'Exit fullscreen':'Enter fullscreen');
+    assert.equal(await page.locator(selector).getAttribute('aria-pressed'),String(active));
+  }
+  assert.equal(await page.locator('body').evaluate(el=>el.classList.contains('presenting')),active);
+  if(active){
+    await page.locator('#stage-fullscreen').waitFor({state:'visible'});
+    assert.ok(await page.locator('#stage-fullscreen').evaluate(button=>{
+      const r=button.getBoundingClientRect();
+      return button.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));
+    }),'exit button is covered by another element');
+  }
+}
+async function exitFullscreen(page, touchscreen = false) {
+  if(touchscreen)await page.locator('#stage-fullscreen').tap();else await page.locator('#stage-fullscreen').click();
+  await page.waitForFunction(()=>!document.body.classList.contains('presenting')&&!document.fullscreenElement);
+  await settle(page);await assertFullscreenControls(page,false);
+}
 async function checkModal(page, id) {
   const modal=page.locator(id); await modal.waitFor({state:'visible'});
   const bounds=await modal.boundingBox(), viewport=page.viewportSize();
@@ -122,8 +147,8 @@ async function checkModal(page, id) {
         const state=await layout(page);assert.ok(state.coarse);const small=state.targets.filter(target=>target.height<43.5||target.width<43.5);assert.deepEqual(small.map(({selector,width,height})=>({selector,width,height})),[]);
         await page.locator('#mode-raw').tap();assert.equal(await page.evaluate(()=>window.Vis2RegExperience.getViewMode()),'raw');await page.locator('#mode-reg').tap();
       });
-      await check(`${width}×${height}: presentation keeps transport visible`,async()=>{await page.locator('#present').click();await settle(page);const state=await layout(page);assertLayout(state,'presentation',true);if(output)await page.screenshot({path:path.join(output,`present-${width}x${height}.png`)});return {stage:state.stage,transport:state.transport};});
-      if(await page.locator('body').evaluate(el=>el.classList.contains('presenting')))await page.locator('#present').click();
+      await check(`${width}×${height}: fullscreen covers viewport and keeps transport visible`,async()=>{await page.locator('#present').click();await settle(page);const state=await layout(page);assertLayout(state,'fullscreen',true);if(output)await page.screenshot({path:path.join(output,`present-${width}x${height}.png`)});return {viewer:state.viewer,stage:state.stage,transport:state.transport};});
+      if(await page.locator('body').evaluate(el=>el.classList.contains('presenting'))){await page.locator('#stage-fullscreen').click();await page.waitForFunction(()=>!document.body.classList.contains('presenting'));}
       if(width===320||width===667||width===768){
         await check(`${width}×${height}: save dialog fits and scrolls`,async()=>{await page.locator('#save-view').click();return checkModal(page,'#save-view-dialog');});
         await check(`${width}×${height}: saved library fits and closes`,async()=>{
@@ -171,25 +196,107 @@ async function checkModal(page, id) {
     await check('Active page adapts after portrait to landscape and back',async()=>{
       for(const viewport of [{width:844,height:390},{width:390,height:844}]){await page.setViewportSize(viewport);await page.waitForTimeout(150);assertLayout(await layout(page),'orientation change');}
     });
-    await check('Fullscreen fallback labels and prior presentation state stay in sync',async()=>{
-      await page.evaluate(()=>Object.defineProperty(document.querySelector('.viewer'),'requestFullscreen',{configurable:true,value:undefined}));
-      for(const initiallyPresenting of [false,true]){
-        if(initiallyPresenting)await page.locator('#present').click();
-        await page.locator('#stage-fullscreen').click();await settle(page);
-        assert.equal(await page.locator('#stage-fullscreen').getAttribute('aria-label'),'Collapse imaging workspace');
-        assert.equal(await page.locator('#stage-fullscreen').getAttribute('aria-pressed'),'true');
-        assert.equal(await page.locator('body').evaluate(el=>el.classList.contains('presenting')),true);
-        assertLayout(await layout(page),'fullscreen fallback',true);
-        await page.locator('#stage-fullscreen').click();await settle(page);
-        assert.equal(await page.locator('#stage-fullscreen').getAttribute('aria-label'),'Expand imaging workspace');
-        assert.equal(await page.locator('#stage-fullscreen').getAttribute('aria-pressed'),'false');
-        assert.equal(await page.locator('body').evaluate(el=>el.classList.contains('presenting')),initiallyPresenting);
-      }
-      await page.keyboard.press('Escape');
-      assert.equal(await page.locator('body').evaluate(el=>el.classList.contains('presenting')),false);
-    });
-    await check('No uncaught browser exceptions',async()=>assert.deepEqual(errors,[]));
     await context.close();
+    for(const capability of ['native','unavailable','rejected']){
+      const fullscreenContext=await browser.newContext({viewport:{width:390,height:844},hasTouch:true});
+      if(capability!=='native')await fullscreenContext.addInitScript(kind=>{
+        for(const name of ['requestFullscreen','webkitRequestFullscreen','webkitRequestFullScreen']){
+          Object.defineProperty(Element.prototype,name,{configurable:true,value:kind==='unavailable'?undefined:function(){return Promise.reject(new DOMException('Fullscreen denied for test','NotAllowedError'));}});
+        }
+      },capability);
+      const fullscreenPage=await fullscreenContext.newPage();
+      fullscreenPage.on('pageerror',error=>errors.push('fullscreen '+capability+': '+error.message));
+      await ready(fullscreenPage,url);
+      await check('Fullscreen '+capability+': covers viewport and exits without changing the selected view',async()=>{
+        await fullscreenPage.locator('#mode-compare').click();await settle(fullscreenPage);
+        await fullscreenPage.evaluate(()=>scrollTo(0,100));await settle(fullscreenPage);
+        const before=await fullscreenPage.evaluate(()=>({frame:window.Vis2Reg.getState().frameIdx,mode:window.Vis2RegExperience.getViewMode(),comparison:window.Vis2RegExperience.getComparison(),scroll:scrollY}));
+        await fullscreenPage.locator('#stage-fullscreen').tap();
+        await fullscreenPage.waitForFunction(()=>document.body.classList.contains('presenting'));
+        if(capability==='native')await fullscreenPage.waitForFunction(()=>!!document.fullscreenElement);await settle(fullscreenPage);
+        await assertFullscreenControls(fullscreenPage,true);assertLayout(await layout(fullscreenPage),'fullscreen '+capability,true);
+        assert.equal(await fullscreenPage.evaluate(()=>!!document.fullscreenElement),capability==='native','native/fallback branch was not exercised');
+        const inside=await fullscreenPage.evaluate(()=>({frame:window.Vis2Reg.getState().frameIdx,mode:window.Vis2RegExperience.getViewMode(),comparison:window.Vis2RegExperience.getComparison()}));
+        assert.deepEqual(inside,{frame:before.frame,mode:before.mode,comparison:before.comparison});
+        await exitFullscreen(fullscreenPage,true);
+        const after=await fullscreenPage.evaluate(()=>({frame:window.Vis2Reg.getState().frameIdx,mode:window.Vis2RegExperience.getViewMode(),comparison:window.Vis2RegExperience.getComparison(),scroll:scrollY,focus:document.activeElement.id}));
+        assert.deepEqual({frame:after.frame,mode:after.mode,comparison:after.comparison},{frame:before.frame,mode:before.mode,comparison:before.comparison});
+        assert.ok(Math.abs(after.scroll-before.scroll)<2,'exit did not restore page scroll: '+JSON.stringify({before:before.scroll,after:after.scroll}));
+        assert.equal(after.focus,'stage-fullscreen','focus was not returned to the initiating button');
+      });
+      await check('Fullscreen '+capability+': rotate and resize while sequence playback continues',async()=>{
+        await fullscreenPage.locator('#mode-reg').click();await fullscreenPage.locator('#play').click();
+        await fullscreenPage.locator('#stage-fullscreen').tap();await fullscreenPage.waitForFunction(()=>document.body.classList.contains('presenting'));
+        const start=await fullscreenPage.evaluate(()=>window.Vis2Reg.getState().frameIdx);
+        for(const viewport of [{width:844,height:390},{width:390,height:844}]){
+          await fullscreenPage.setViewportSize(viewport);await settle(fullscreenPage);assertLayout(await layout(fullscreenPage),'rotating fullscreen '+capability,true);
+          assert.equal(await fullscreenPage.evaluate(()=>window.Vis2Reg.getState().playing),true,'resize paused playback');
+          assert.equal(await fullscreenPage.evaluate(()=>window.Vis2RegExperience.getViewMode()),'reg');
+        }
+        await fullscreenPage.waitForFunction(frame=>window.Vis2Reg.getState().frameIdx!==frame,start);
+        await exitFullscreen(fullscreenPage,true);
+        assert.equal(await fullscreenPage.evaluate(()=>window.Vis2Reg.getState().playing),true,'leaving fullscreen paused playback');
+        await fullscreenPage.locator('#play').click();
+      });
+      await check('Fullscreen '+capability+': hidden controls keep an accessible exit',async()=>{
+        await fullscreenPage.setViewportSize({width:844,height:390});await settle(fullscreenPage);
+        await fullscreenPage.locator('#stage-fullscreen').tap();await fullscreenPage.waitForFunction(()=>document.body.classList.contains('presenting'));await settle(fullscreenPage);
+        const before=await fullscreenPage.locator('#stage').boundingBox();
+        await fullscreenPage.locator('#presentation-controls').tap();await settle(fullscreenPage);
+        await assertFullscreenControls(fullscreenPage,true);
+        assert.equal(await fullscreenPage.locator('#transport').isVisible(),false);
+        assert.equal(await fullscreenPage.locator('.view-tabs').isVisible(),false);
+        const hidden=await fullscreenPage.locator('#stage').boundingBox();
+        assert.ok(hidden.height>before.height+10,'hiding controls did not give more space to the image');
+        assert.ok(await fullscreenPage.locator('#presentation-controls').isVisible(),'show controls action is not available');
+        if(output)await fullscreenPage.screenshot({path:path.join(output,'fullscreen-'+capability+'-hidden-controls.png')});
+        await exitFullscreen(fullscreenPage,true);
+        await fullscreenPage.locator('#stage-fullscreen').tap();await fullscreenPage.waitForFunction(()=>document.body.classList.contains('presenting'));await settle(fullscreenPage);
+        assertLayout(await layout(fullscreenPage),'reopened fullscreen controls '+capability,true);
+        assert.equal(await fullscreenPage.locator('#transport').isVisible(),true,'new fullscreen session retained hidden playback controls');
+        await fullscreenPage.locator('#presentation-controls').tap();await fullscreenPage.locator('#presentation-controls').tap();await settle(fullscreenPage);
+        assertLayout(await layout(fullscreenPage),'restored fullscreen controls '+capability,true);
+        if(capability==='native')await fullscreenPage.evaluate(()=>document.exitFullscreen());else await fullscreenPage.keyboard.press('Escape');
+        await fullscreenPage.waitForFunction(()=>!document.body.classList.contains('presenting'));await settle(fullscreenPage);
+        await assertFullscreenControls(fullscreenPage,false);
+      });
+      if(capability==='unavailable')await check('Fullscreen phone touch gestures still rotate 3D and move comparison divider',async()=>{
+        await fullscreenPage.setViewportSize({width:390,height:844});await fullscreenPage.locator('#mode-explore').tap();
+        await fullscreenPage.locator('#stage-fullscreen').tap();await fullscreenPage.waitForFunction(()=>document.body.classList.contains('presenting'));await settle(fullscreenPage);
+        const touchClient=await fullscreenContext.newCDPSession(fullscreenPage),box=await stageBox(fullscreenPage),before=await fullscreenPage.evaluate(()=>window.Vis2Reg.getViewState());
+        await drag(touchClient,{x:box.x+box.width*.35,y:box.y+box.height*.5},{x:box.x+box.width*.65,y:box.y+box.height*.62});await fullscreenPage.waitForTimeout(300);
+        const after=await fullscreenPage.evaluate(()=>window.Vis2Reg.getViewState());assert.equal(after.frame,before.frame);assert.equal(after.mode,'explore');assert.notDeepEqual(after.camera.quaternion,before.camera.quaternion);
+        await fullscreenPage.locator('#mode-compare').tap();await settle(fullscreenPage);
+        const stage=await stageBox(fullscreenPage),handle=await fullscreenPage.locator('#compare-divider').boundingBox(),comparison=+(await fullscreenPage.locator('#compare-slider').inputValue());
+        await drag(touchClient,{x:handle.x+handle.width/2,y:stage.y+stage.height*.55},{x:stage.x+stage.width*.8,y:stage.y+stage.height*.55});
+        assert.ok(+(await fullscreenPage.locator('#compare-slider').inputValue())>comparison+10,'fullscreen comparison divider did not respond to touch');
+        await exitFullscreen(fullscreenPage,true);
+      });
+      await fullscreenContext.close();
+    }
+    for(const [width,height,label] of [[240,320,'small portrait'],[320,240,'small landscape'],[683,384,'200% zoom effective CSS viewport'],[3840,1080,'ultrawide'],[3840,2160,'4K display']]){
+      const extremeContext=await browser.newContext({viewport:{width,height},hasTouch:width<700});
+      const extremePage=await extremeContext.newPage();extremePage.on('pageerror',error=>errors.push(label+': '+error.message));
+      await check(`${width}×${height}: fullscreen ${label}`,async()=>{
+        await ready(extremePage,url);await extremePage.locator('#present').click();await extremePage.waitForFunction(()=>document.body.classList.contains('presenting'));await settle(extremePage);
+        assertLayout(await layout(extremePage),label,true);await assertFullscreenControls(extremePage,true);
+        if(output)await extremePage.screenshot({path:path.join(output,`fullscreen-${width}x${height}.png`)});
+        await exitFullscreen(extremePage);
+      });
+      await extremeContext.close();
+    }
+    const launchContext=await browser.newContext({viewport:{width:390,height:844},hasTouch:true}),launchPage=await launchContext.newPage();
+    launchPage.on('pageerror',error=>errors.push('fullscreen launch: '+error.message));
+    await check('Fullscreen launch link fills the viewport without requesting native fullscreen',async()=>{
+      await launchContext.addInitScript(()=>{window.nativeFullscreenRequests=0;for(const name of ['requestFullscreen','webkitRequestFullscreen','webkitRequestFullScreen'])Object.defineProperty(Element.prototype,name,{configurable:true,value:function(){window.nativeFullscreenRequests++;return Promise.reject(new Error('No user activation'));}});});
+      const launchURL=new URL(url);launchURL.searchParams.set('fullscreen','1');await ready(launchPage,launchURL.href);
+      assertLayout(await layout(launchPage),'fullscreen launch',true);await assertFullscreenControls(launchPage,true);
+      assert.equal(await launchPage.evaluate(()=>window.nativeFullscreenRequests),0,'auto launch attempted fullscreen without a user gesture');
+      assert.equal(await launchPage.evaluate(()=>!!document.fullscreenElement),false);
+      await exitFullscreen(launchPage,true);
+    });
+    await launchContext.close();
+    await check('No uncaught browser exceptions',async()=>assert.equal(errors.length,0,errors.length+' uncaught browser errors:\n'+[...new Set(errors)].join('\n')));
   } finally { await browser?.close();if(local)await new Promise(resolve=>local.server.close(resolve)); }
   const report={passed:results.filter(result=>result.pass).length,failed:results.filter(result=>!result.pass).length,results};
   if(output)fs.writeFileSync(path.join(output,'report.json'),JSON.stringify(report,null,2));

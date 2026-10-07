@@ -13,7 +13,7 @@ AE-CAI × PRiSM, MICCAI 2026 · AI in Medicine and Surgery Group, University of 
 - Play, step through, or jump between keyframes of the **511-frame Patient 04 sequence** (approximately 56.9 seconds).
 - Save up to 24 named views in your browser, including the camera, frame, layers and comparison position.
 - Export a 1920-pixel-wide PNG with case and frame information.
-- Use presentation mode, fullscreen, a guided tour, and light or dark themes.
+- Use an edge-to-edge fullscreen presentation, a guided tour, and light or dark themes.
 - Explore manual pose, structure and deformation controls. Edits remain in your browser and can be exported as JSON.
 
 The public site opens at **frame 204 (22.8 seconds)**, the third keyframe thumbnail. Add `?frame=0` to open the beginning, or `?frame=204` to link to a particular frame. Frames are zero-indexed.
@@ -44,7 +44,8 @@ All scripts, models and frames are bundled; no inference server, API key, CDN, o
 | Return to camera view | `R` |
 | Save a view / export an image | `B` / `E` |
 | Move / rotate / scale while editing | `G` / `T` / `S` |
-| Close dialog or guide | `Esc` |
+| Enter / exit fullscreen | `F` |
+| Close dialog, guide or fullscreen | `Esc` |
 
 Input controls and dialogs retain their normal keyboard behavior. In 3D mode, drag to orbit and scroll to zoom.
 
@@ -55,10 +56,19 @@ Input controls and dialogs retain their normal keyboard behavior. In 3D mode, dr
 - In **3D anatomy**, use one finger to rotate, pinch with two fingers to zoom, or move two fingers together to pan. Cancelling a touch gesture does not leave the model or editor stuck in a drag.
 - In **Compare**, drag the visible divider. Other parts of the image remain available for page scrolling. The divider also supports arrow keys, Home and End.
 - Touchscreen controls have larger hit areas, including on tablets and large touch displays. Phone keyframes can be swiped horizontally, and the timeline has a larger draggable area.
-- Presentation mode keeps the image and playback controls within short landscape screens. If the browser cannot enter native fullscreen, the expand button uses presentation layout and clearly indicates how to collapse it.
+- Both the header **Fullscreen** button and the viewer's expand icon enter the same edge-to-edge presentation. Navigation, the heading and the side panel are hidden. **Hide controls** gives the image more room; **Show controls** brings back the modes and playback bar. The exit button remains visible at all times.
+- When the browser supports and permits it, presentation uses native fullscreen with browser navigation hidden. Otherwise the demo fills the browser's visible viewport. A webpage cannot force a browser or operating system to hide its own UI. Exiting with the button, `F`, `Esc` or the browser's own fullscreen controls restores the workspace's scroll position and focus without resetting the frame or playback state.
 - Dialogs scroll within the available screen area; text inputs use a readable size and respond to the on-screen keyboard's visible viewport.
 
 **中文：** 手机和平板竖屏采用上下布局，横屏和桌面保留合适的影像比例。AR 画面可上下滑动页面；进入 3D 后单指旋转、双指缩放和平移。对比模式只拖动分隔手柄，画面其余区域仍可滚动。触屏按钮、时间轴、弹窗和横屏演示布局均做了适配。
+
+### Fullscreen launch and Home Screen
+
+Use [the presentation link](https://jarm1ng.github.io/Vis2Reg-Demo/?case=p4video&frame=204&fullscreen=1) to open directly in the viewport-filling layout. An automatic launch does not request native fullscreen because that requires a user gesture. The image keeps its original aspect ratio; unused space stays dark instead of stretching the overlay.
+
+The site includes a web app manifest and Home Screen icons. On a supported phone or tablet, use the browser's **Add to Home Screen** action and launch the saved icon for a standalone window without the normal browser address bar. Display behavior depends on the browser and OS. This does not add offline data caching or a background service.
+
+**中文：** 点击任一全屏入口即可整屏演示；右上角可收起控件，退出按钮始终保留。不支持原生全屏的浏览器会铺满网页可视区域；支持的手机和平板可通过“添加到主屏幕”在独立窗口打开。影像始终等比显示。
 
 ## Data and scientific scope
 

@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "Vis2Reg — Liver AR Studio",
+  "short_name": "Vis2Reg",
+  "description": "Interactive 3D liver anatomy and AR visualisation",
+  "start_url": "./?case=p4video&frame=204&fullscreen=1",
+  "scope": "./",
+  "display_override": ["fullscreen", "standalone"],
+  "display": "standalone",
+  "background_color": "#09150f",
+  "theme_color": "#09150f",
+  "icons": [
+    {"src": "assets/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "assets/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}

@@ -311,3 +311,94 @@ dialog, .sv-dialog, #case-library-dialog {
   #group-dialog .group-url { grid-column: 2; grid-row: 5; margin: 0; font-size: 9px; }
   #group-dialog .dialog-close { top: 5px; right: 5px; }
 }
+
+/* A single edge-to-edge presentation works with or without the native API. */
+html.presentation-lock { overflow: hidden; scrollbar-gutter: auto; background: #09150f; }
+body.presenting { overflow: hidden; background: #09150f; }
+body.presenting #top,
+body.presenting .workspace-heading,
+body.presenting #panel,
+body.presenting .app-footer { display: none !important; }
+body.presenting #app { max-width: none; padding: 0; margin: 0; min-height: 0; --workspace-flow: contained; }
+body.presenting #main { display: block; margin: 0; padding: 0; }
+body.presenting .viewer {
+  position: fixed; z-index: 70;
+  left: var(--presentation-left,0px); top: var(--presentation-top,0px);
+  width: var(--presentation-width,100vw); height: var(--presentation-height,100dvh);
+  min-height: 0; max-width: none; margin: 0;
+  border: 0; border-radius: 0; box-shadow: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display: flex; flex-direction: column; background: #09150f;
+}
+body.presenting .viewer-toolbar {
+  display: flex; min-height: 60px; height: auto; flex: 0 0 auto;
+  padding: 8px 190px 8px 12px; gap: 0; background: #12231b;
+}
+body.presenting .view-tabs { display: flex; flex-wrap: nowrap; gap: 4px; }
+body.presenting .view-tabs button { min-height: 44px; padding: 8px 12px; font-size: 12px; }
+body.presenting .anatomy-strip,
+body.presenting .viewer-caption,
+body.presenting #comparison-caption,
+body.presenting .filmstrip,
+body.presenting .filmstrip-heading { display: none !important; }
+body.presenting #stage-wrap { flex: 1 1 0; width: 100%; height: auto; min-height: 0; }
+body.presenting #stage { flex: none; max-height: 100%; }
+body.presenting .viewer:not(.exploring) #hint { display: none; }
+body.presenting #transport {
+  display: flex; flex: 0 0 auto; gap: 10px;
+  min-height: 64px; padding: 6px 16px; background: #12231bf5;
+  border-top: 1px solid #2c4031;
+}
+body.presenting .timeline { flex: 1; width: auto; min-width: 0; }
+body.presenting .transport-buttons, body.presenting .speed { flex: 0 0 auto; }
+body.presenting #play, body.presenting .transport-buttons .icon-btn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+body.presenting input#scrub { height: 32px; }
+#presentation-actions {
+  position: absolute; z-index: 30; top: max(8px,env(safe-area-inset-top)); right: max(8px,env(safe-area-inset-right));
+  display: flex; align-items: center; gap: 6px; pointer-events: none;
+}
+#presentation-actions > button { pointer-events: auto; min-height: 44px; }
+.presentation-action {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 8px 12px; border: 1px solid #739077; border-radius: 8px;
+  background: #183022ed; color: #e6f3dd; font-size: 11px; white-space: nowrap;
+}
+.presentation-action:hover { background: #2b4933; }
+.presentation-action .icon { width: 16px; height: 16px; }
+#presentation-actions #stage-fullscreen {
+  width: 44px; height: 44px; min-width: 44px; padding: 0;
+  color: #f2f7ec; border: 1px solid #739077; background: #183022ed; border-radius: 8px;
+}
+#presentation-actions #stage-fullscreen:hover { background: #2b4933; }
+#presentation-actions #stage-fullscreen .icon { width: 20px; height: 20px; }
+body.presenting.presentation-controls-hidden .viewer-toolbar,
+body.presenting.presentation-controls-hidden #transport { display: none !important; }
+body.presenting.presentation-controls-hidden #mode-badge,
+body.presenting.presentation-controls-hidden #hint,
+body.presenting.presentation-controls-hidden .image-tag,
+body.presenting.presentation-controls-hidden .orientation { display: none; }
+@media (max-width:680px) {
+  body.presenting .viewer-toolbar { padding: 8px 106px 8px 6px; }
+  body.presenting .view-tabs { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 2px; }
+  body.presenting .view-tabs button { padding: 5px 2px; font-size: 10px; white-space: normal; }
+  body.presenting .view-tabs .icon { display: none; }
+  #presentation-controls { width: 44px; min-width: 44px; padding: 8px; }
+  #presentation-controls span { display: none; }
+  #presentation-controls .icon { width: 20px; height: 20px; }
+  body.presenting #transport { padding-inline: 8px; gap: 7px; }
+}
+@media (max-width:480px) {
+  body.presenting #transport { display: grid; grid-template-columns: 1fr 1fr; min-height: 0; gap: 0 6px; padding: 4px 8px 8px; }
+  body.presenting .timeline { grid-row: 1; grid-column: 1 / -1; width: 100%; }
+  body.presenting .transport-buttons { grid-row: 2; grid-column: 1; }
+  body.presenting .speed { grid-row: 2; grid-column: 2; justify-content: flex-end; }
+  body.presenting .speed button { min-width: 36px; min-height: 44px; padding: 4px; }
+}
+@media (max-width:300px) {
+  body.presenting .view-tabs { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  body.presenting .viewer-toolbar { align-items: flex-start; }
+  body.presenting .view-tabs button { min-height: 44px; font-size: 10px; }
+  body.presenting .transport-buttons { gap: 0; }
+  body.presenting #transport .speed { display: none; }
+  body.presenting .transport-buttons { grid-column: 1 / -1; justify-content: center; }
+}
